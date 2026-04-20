@@ -1,0 +1,773 @@
+import 'dart:convert';
+
+import 'inspection_enums.dart';
+
+typedef JsonMap = Map<String, dynamic>;
+
+class InspectionSectionProgress {
+  InspectionSectionProgress({
+    required this.id,
+    required this.inspectionId,
+    required this.sectionKey,
+    required this.title,
+    required this.sortOrder,
+    required this.completionState,
+  });
+
+  final String id;
+  final String inspectionId;
+  String sectionKey;
+  String title;
+  int sortOrder;
+  SectionCompletionState completionState;
+
+  factory InspectionSectionProgress.fromJson(JsonMap json) {
+    return InspectionSectionProgress(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      sectionKey: json['sectionKey'] as String,
+      title: json['title'] as String,
+      sortOrder: (json['sortOrder'] as num).toInt(),
+      completionState: SectionCompletionStateX.fromValue(
+        json['completionState'] as String? ?? 'not_started',
+      ),
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'sectionKey': sectionKey,
+      'title': title,
+      'sortOrder': sortOrder,
+      'completionState': completionState.value,
+    };
+  }
+}
+
+class InspectionResponse {
+  InspectionResponse({
+    required this.id,
+    required this.inspectionId,
+    required this.sectionKey,
+    required this.itemKey,
+    required this.itemLabel,
+    required this.fieldType,
+    this.value,
+    this.conditionRating,
+    this.isFlagged = false,
+    this.comment,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String inspectionId;
+  String sectionKey;
+  String itemKey;
+  String itemLabel;
+  InspectionFieldType fieldType;
+  String? value;
+  ConditionRating? conditionRating;
+  bool isFlagged;
+  String? comment;
+  DateTime createdAt;
+  DateTime updatedAt;
+
+  factory InspectionResponse.fromJson(JsonMap json) {
+    return InspectionResponse(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      sectionKey: json['sectionKey'] as String,
+      itemKey: json['itemKey'] as String,
+      itemLabel: json['itemLabel'] as String,
+      fieldType: InspectionFieldTypeX.fromValue(
+        json['fieldType'] as String? ?? 'text',
+      ),
+      value: json['value'] as String?,
+      conditionRating: json['conditionRating'] == null
+          ? null
+          : ConditionRatingX.fromValue(json['conditionRating'] as String),
+      isFlagged: json['isFlagged'] as bool? ?? false,
+      comment: json['comment'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'sectionKey': sectionKey,
+      'itemKey': itemKey,
+      'itemLabel': itemLabel,
+      'fieldType': fieldType.value,
+      'value': value,
+      'conditionRating': conditionRating?.value,
+      'isFlagged': isFlagged,
+      'comment': comment,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+class InspectionPhoto {
+  InspectionPhoto({
+    required this.id,
+    required this.inspectionId,
+    required this.sectionKey,
+    required this.itemKey,
+    required this.filePath,
+    this.caption,
+    required this.sortOrder,
+    required this.capturedAt,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String inspectionId;
+  String sectionKey;
+  String itemKey;
+  String filePath;
+  String? caption;
+  int sortOrder;
+  DateTime capturedAt;
+  DateTime createdAt;
+
+  factory InspectionPhoto.fromJson(JsonMap json) {
+    return InspectionPhoto(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      sectionKey: json['sectionKey'] as String,
+      itemKey: json['itemKey'] as String,
+      filePath: json['filePath'] as String,
+      caption: json['caption'] as String?,
+      sortOrder: (json['sortOrder'] as num).toInt(),
+      capturedAt: DateTime.parse(json['capturedAt'] as String).toLocal(),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'sectionKey': sectionKey,
+      'itemKey': itemKey,
+      'filePath': filePath,
+      'caption': caption,
+      'sortOrder': sortOrder,
+      'capturedAt': capturedAt.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+}
+
+class ActionItem {
+  ActionItem({
+    required this.id,
+    required this.inspectionId,
+    this.sourceSectionKey,
+    this.sourceItemKey,
+    this.conditionRating,
+    required this.title,
+    required this.description,
+    this.partsRequired,
+    required this.isAutoGenerated,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String inspectionId;
+  String? sourceSectionKey;
+  String? sourceItemKey;
+  ConditionRating? conditionRating;
+  String title;
+  String description;
+  String? partsRequired;
+  bool isAutoGenerated;
+  DateTime createdAt;
+  DateTime updatedAt;
+
+  factory ActionItem.fromJson(JsonMap json) {
+    return ActionItem(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      sourceSectionKey: json['sourceSectionKey'] as String?,
+      sourceItemKey: json['sourceItemKey'] as String?,
+      conditionRating: json['conditionRating'] == null
+          ? null
+          : ConditionRatingX.fromValue(json['conditionRating'] as String),
+      title: json['title'] as String,
+      description: json['description'] as String,
+      partsRequired: json['partsRequired'] as String?,
+      isAutoGenerated: json['isAutoGenerated'] as bool? ?? false,
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'sourceSectionKey': sourceSectionKey,
+      'sourceItemKey': sourceItemKey,
+      'conditionRating': conditionRating?.value,
+      'title': title,
+      'description': description,
+      'partsRequired': partsRequired,
+      'isAutoGenerated': isAutoGenerated,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+class HoseEntry {
+  HoseEntry({
+    required this.id,
+    required this.inspectionId,
+    this.hoseNameLocation,
+    this.failureType,
+    this.hoseSize,
+    this.hoseLength,
+    this.hoseType,
+    this.fittingEndA,
+    this.fittingEndB,
+    this.quantity,
+    this.replacementPartNumbers,
+    this.partsNeeded,
+    this.notes,
+  });
+
+  final String id;
+  final String inspectionId;
+  String? hoseNameLocation;
+  FailureType? failureType;
+  String? hoseSize;
+  String? hoseLength;
+  String? hoseType;
+  String? fittingEndA;
+  String? fittingEndB;
+  int? quantity;
+  String? replacementPartNumbers;
+  String? partsNeeded;
+  String? notes;
+
+  bool get hasFailure => failureType != null;
+
+  factory HoseEntry.fromJson(JsonMap json) {
+    return HoseEntry(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      hoseNameLocation: json['hoseNameLocation'] as String?,
+      failureType: json['failureType'] == null
+          ? null
+          : FailureTypeX.fromValue(json['failureType'] as String),
+      hoseSize: json['hoseSize'] as String?,
+      hoseLength: json['hoseLength'] as String?,
+      hoseType: json['hoseType'] as String?,
+      fittingEndA: json['fittingEndA'] as String?,
+      fittingEndB: json['fittingEndB'] as String?,
+      quantity: (json['quantity'] as num?)?.toInt(),
+      replacementPartNumbers: json['replacementPartNumbers'] as String?,
+      partsNeeded: json['partsNeeded'] as String?,
+      notes: json['notes'] as String?,
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'hoseNameLocation': hoseNameLocation,
+      'failureType': failureType?.value,
+      'hoseSize': hoseSize,
+      'hoseLength': hoseLength,
+      'hoseType': hoseType,
+      'fittingEndA': fittingEndA,
+      'fittingEndB': fittingEndB,
+      'quantity': quantity,
+      'replacementPartNumbers': replacementPartNumbers,
+      'partsNeeded': partsNeeded,
+      'notes': notes,
+    };
+  }
+}
+
+class ComponentEntry {
+  ComponentEntry({
+    required this.id,
+    required this.inspectionId,
+    required this.componentType,
+    this.modelPartNumber,
+    this.serialNumber,
+    this.conditionRating,
+    this.notes,
+  });
+
+  final String id;
+  final String inspectionId;
+  String componentType;
+  String? modelPartNumber;
+  String? serialNumber;
+  ConditionRating? conditionRating;
+  String? notes;
+
+  factory ComponentEntry.fromJson(JsonMap json) {
+    return ComponentEntry(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      componentType: json['componentType'] as String,
+      modelPartNumber: json['modelPartNumber'] as String?,
+      serialNumber: json['serialNumber'] as String?,
+      conditionRating: json['conditionRating'] == null
+          ? null
+          : ConditionRatingX.fromValue(json['conditionRating'] as String),
+      notes: json['notes'] as String?,
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'componentType': componentType,
+      'modelPartNumber': modelPartNumber,
+      'serialNumber': serialNumber,
+      'conditionRating': conditionRating?.value,
+      'notes': notes,
+    };
+  }
+}
+
+class FilterEntry {
+  FilterEntry({
+    required this.id,
+    required this.inspectionId,
+    this.filterName,
+    this.partNumber,
+    this.replacedStatus,
+    this.conditionRating,
+    this.notes,
+  });
+
+  final String id;
+  final String inspectionId;
+  String? filterName;
+  String? partNumber;
+  FilterReplacementStatus? replacedStatus;
+  ConditionRating? conditionRating;
+  String? notes;
+
+  factory FilterEntry.fromJson(JsonMap json) {
+    return FilterEntry(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      filterName: json['filterName'] as String?,
+      partNumber: json['partNumber'] as String?,
+      replacedStatus: json['replacedStatus'] == null
+          ? null
+          : FilterReplacementStatusX.fromValue(
+              json['replacedStatus'] as String,
+            ),
+      conditionRating: json['conditionRating'] == null
+          ? null
+          : ConditionRatingX.fromValue(json['conditionRating'] as String),
+      notes: json['notes'] as String?,
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'filterName': filterName,
+      'partNumber': partNumber,
+      'replacedStatus': replacedStatus?.value,
+      'conditionRating': conditionRating?.value,
+      'notes': notes,
+    };
+  }
+}
+
+class RequiredItemEntry {
+  RequiredItemEntry({
+    required this.id,
+    required this.inspectionId,
+    this.itemName,
+    this.description,
+    this.partNumber,
+    this.quantity,
+    this.relatedSectionItem,
+    this.notes,
+  });
+
+  final String id;
+  final String inspectionId;
+  String? itemName;
+  String? description;
+  String? partNumber;
+  int? quantity;
+  String? relatedSectionItem;
+  String? notes;
+
+  factory RequiredItemEntry.fromJson(JsonMap json) {
+    return RequiredItemEntry(
+      id: json['id'] as String,
+      inspectionId: json['inspectionId'] as String,
+      itemName: json['itemName'] as String?,
+      description: json['description'] as String?,
+      partNumber: json['partNumber'] as String?,
+      quantity: (json['quantity'] as num?)?.toInt(),
+      relatedSectionItem: json['relatedSectionItem'] as String?,
+      notes: json['notes'] as String?,
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'inspectionId': inspectionId,
+      'itemName': itemName,
+      'description': description,
+      'partNumber': partNumber,
+      'quantity': quantity,
+      'relatedSectionItem': relatedSectionItem,
+      'notes': notes,
+    };
+  }
+}
+
+class EmailRecipientEntry {
+  EmailRecipientEntry({
+    required this.id,
+    required this.email,
+    this.customer,
+    required this.lastUsedAt,
+    required this.usageCount,
+    this.isCustomerDefault = false,
+  });
+
+  final String id;
+  String email;
+  String? customer;
+  DateTime lastUsedAt;
+  int usageCount;
+  bool isCustomerDefault;
+
+  factory EmailRecipientEntry.fromJson(JsonMap json) {
+    return EmailRecipientEntry(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      customer: json['customer'] as String?,
+      lastUsedAt: DateTime.parse(json['lastUsedAt'] as String).toLocal(),
+      usageCount: (json['usageCount'] as num).toInt(),
+      isCustomerDefault: json['isCustomerDefault'] as bool? ?? false,
+    );
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'email': email,
+      'customer': customer,
+      'lastUsedAt': lastUsedAt.toIso8601String(),
+      'usageCount': usageCount,
+      'isCustomerDefault': isCustomerDefault,
+    };
+  }
+}
+
+class InspectionSearchQuery {
+  const InspectionSearchQuery({
+    this.term = '',
+    this.status,
+    this.startDate,
+    this.endDate,
+  });
+
+  final String term;
+  final InspectionStatus? status;
+  final DateTime? startDate;
+  final DateTime? endDate;
+}
+
+class DashboardSummary {
+  const DashboardSummary({
+    required this.draftCount,
+    required this.inProgressCount,
+    required this.completeCount,
+    required this.emailedCount,
+    required this.criticalCount,
+    required this.recentInspections,
+  });
+
+  final int draftCount;
+  final int inProgressCount;
+  final int completeCount;
+  final int emailedCount;
+  final int criticalCount;
+  final List<InspectionRecord> recentInspections;
+}
+
+class InspectionRecord {
+  InspectionRecord({
+    required this.id,
+    required this.documentNumber,
+    required this.status,
+    this.customer = '',
+    this.workOrderNumber = '',
+    this.customerReference = '',
+    this.assetName = '',
+    this.hpuAssetIdName = '',
+    this.siteLocation = '',
+    this.technicianName = '',
+    this.servicingShop = '',
+    required this.inspectionDateTime,
+    required this.createdAt,
+    required this.updatedAt,
+    this.completedAt,
+    this.emailedAt,
+    this.finalTechComments = '',
+    this.signatureFilePath,
+    this.criticalAcknowledged = false,
+    this.generatedPdfPath,
+    this.sections = const <InspectionSectionProgress>[],
+    this.responses = const <InspectionResponse>[],
+    this.photos = const <InspectionPhoto>[],
+    this.actionItems = const <ActionItem>[],
+    this.hoseEntries = const <HoseEntry>[],
+    this.componentEntries = const <ComponentEntry>[],
+    this.filterEntries = const <FilterEntry>[],
+    this.requiredItems = const <RequiredItemEntry>[],
+  });
+
+  final String id;
+  String documentNumber;
+  InspectionStatus status;
+  String customer;
+  String workOrderNumber;
+  String customerReference;
+  String assetName;
+  String hpuAssetIdName;
+  String siteLocation;
+  String technicianName;
+  String servicingShop;
+  DateTime inspectionDateTime;
+  DateTime createdAt;
+  DateTime updatedAt;
+  DateTime? completedAt;
+  DateTime? emailedAt;
+  String finalTechComments;
+  String? signatureFilePath;
+  bool criticalAcknowledged;
+  String? generatedPdfPath;
+  List<InspectionSectionProgress> sections;
+  List<InspectionResponse> responses;
+  List<InspectionPhoto> photos;
+  List<ActionItem> actionItems;
+  List<HoseEntry> hoseEntries;
+  List<ComponentEntry> componentEntries;
+  List<FilterEntry> filterEntries;
+  List<RequiredItemEntry> requiredItems;
+
+  factory InspectionRecord.fromJson(JsonMap json) {
+    return InspectionRecord(
+      id: json['id'] as String,
+      documentNumber: json['documentNumber'] as String,
+      status: InspectionStatusX.fromValue(json['status'] as String? ?? 'draft'),
+      customer: json['customer'] as String? ?? '',
+      workOrderNumber: json['workOrderNumber'] as String? ?? '',
+      customerReference: json['customerReference'] as String? ?? '',
+      assetName: json['assetName'] as String? ?? '',
+      hpuAssetIdName: json['hpuAssetIdName'] as String? ?? '',
+      siteLocation: json['siteLocation'] as String? ?? '',
+      technicianName: json['technicianName'] as String? ?? '',
+      servicingShop: json['servicingShop'] as String? ?? '',
+      inspectionDateTime: DateTime.parse(
+        json['inspectionDateTime'] as String,
+      ).toLocal(),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
+      completedAt: json['completedAt'] == null
+          ? null
+          : DateTime.parse(json['completedAt'] as String).toLocal(),
+      emailedAt: json['emailedAt'] == null
+          ? null
+          : DateTime.parse(json['emailedAt'] as String).toLocal(),
+      finalTechComments: json['finalTechComments'] as String? ?? '',
+      signatureFilePath: json['signatureFilePath'] as String?,
+      criticalAcknowledged: json['criticalAcknowledged'] as bool? ?? false,
+      generatedPdfPath: json['generatedPdfPath'] as String?,
+      sections: (json['sections'] as List<dynamic>? ?? <dynamic>[])
+          .map(
+            (dynamic item) =>
+                InspectionSectionProgress.fromJson(item as JsonMap),
+          )
+          .toList(growable: true),
+      responses: (json['responses'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic item) => InspectionResponse.fromJson(item as JsonMap))
+          .toList(growable: true),
+      photos: (json['photos'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic item) => InspectionPhoto.fromJson(item as JsonMap))
+          .toList(growable: true),
+      actionItems: (json['actionItems'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic item) => ActionItem.fromJson(item as JsonMap))
+          .toList(growable: true),
+      hoseEntries: (json['hoseEntries'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic item) => HoseEntry.fromJson(item as JsonMap))
+          .toList(growable: true),
+      componentEntries:
+          (json['componentEntries'] as List<dynamic>? ?? <dynamic>[])
+              .map((dynamic item) => ComponentEntry.fromJson(item as JsonMap))
+              .toList(growable: true),
+      filterEntries: (json['filterEntries'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic item) => FilterEntry.fromJson(item as JsonMap))
+          .toList(growable: true),
+      requiredItems: (json['requiredItems'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic item) => RequiredItemEntry.fromJson(item as JsonMap))
+          .toList(growable: true),
+    );
+  }
+
+  factory InspectionRecord.fromEncodedJson(String payload) {
+    return InspectionRecord.fromJson(jsonDecode(payload) as JsonMap);
+  }
+
+  JsonMap toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'documentNumber': documentNumber,
+      'status': status.value,
+      'customer': customer,
+      'workOrderNumber': workOrderNumber,
+      'customerReference': customerReference,
+      'assetName': assetName,
+      'hpuAssetIdName': hpuAssetIdName,
+      'siteLocation': siteLocation,
+      'technicianName': technicianName,
+      'servicingShop': servicingShop,
+      'inspectionDateTime': inspectionDateTime.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'completedAt': completedAt?.toIso8601String(),
+      'emailedAt': emailedAt?.toIso8601String(),
+      'finalTechComments': finalTechComments,
+      'signatureFilePath': signatureFilePath,
+      'criticalAcknowledged': criticalAcknowledged,
+      'generatedPdfPath': generatedPdfPath,
+      'sections': sections
+          .map((InspectionSectionProgress item) => item.toJson())
+          .toList(),
+      'responses': responses
+          .map((InspectionResponse item) => item.toJson())
+          .toList(),
+      'photos': photos.map((InspectionPhoto item) => item.toJson()).toList(),
+      'actionItems': actionItems
+          .map((ActionItem item) => item.toJson())
+          .toList(),
+      'hoseEntries': hoseEntries
+          .map((HoseEntry item) => item.toJson())
+          .toList(),
+      'componentEntries': componentEntries
+          .map((ComponentEntry item) => item.toJson())
+          .toList(),
+      'filterEntries': filterEntries
+          .map((FilterEntry item) => item.toJson())
+          .toList(),
+      'requiredItems': requiredItems
+          .map((RequiredItemEntry item) => item.toJson())
+          .toList(),
+    };
+  }
+
+  String toEncodedJson() {
+    return jsonEncode(toJson());
+  }
+
+  InspectionRecord clone() {
+    return InspectionRecord.fromJson(toJson());
+  }
+
+  InspectionResponse? responseByKey(String sectionKey, String itemKey) {
+    for (final InspectionResponse response in responses) {
+      if (response.sectionKey == sectionKey && response.itemKey == itemKey) {
+        return response;
+      }
+    }
+    return null;
+  }
+
+  List<InspectionPhoto> photosForItem(String itemKey) {
+    return photos
+        .where((InspectionPhoto photo) => photo.itemKey == itemKey)
+        .toList(growable: false)
+      ..sort(
+        (InspectionPhoto a, InspectionPhoto b) =>
+            a.sortOrder.compareTo(b.sortOrder),
+      );
+  }
+
+  bool get hasCriticalItems {
+    if (responses.any((InspectionResponse response) {
+      return response.conditionRating == ConditionRating.criticalOutOfService;
+    })) {
+      return true;
+    }
+    return actionItems.any((ActionItem actionItem) {
+      return actionItem.conditionRating == ConditionRating.criticalOutOfService;
+    });
+  }
+
+  int get flaggedItemCount {
+    final int responseFlags = responses
+        .where(
+          (InspectionResponse response) =>
+              response.isFlagged ||
+              (response.conditionRating?.isFlagged ?? false),
+        )
+        .length;
+    final int hoseFlags = hoseEntries
+        .where((HoseEntry entry) => entry.hasFailure)
+        .length;
+    final int filterFlags = filterEntries
+        .where(
+          (FilterEntry entry) =>
+              entry.replacedStatus == FilterReplacementStatus.no ||
+              (entry.conditionRating?.isFlagged ?? false),
+        )
+        .length;
+    return responseFlags + hoseFlags + filterFlags;
+  }
+
+  int get photoCount => photos.length;
+
+  int get actionItemCount => actionItems.length;
+
+  int get atRiskCount => responses
+      .where(
+        (InspectionResponse response) =>
+            response.conditionRating == ConditionRating.monitorAtRisk,
+      )
+      .length;
+
+  int get unsatisfactoryCount => responses
+      .where(
+        (InspectionResponse response) =>
+            response.conditionRating == ConditionRating.unsatisfactory,
+      )
+      .length;
+
+  int get criticalCount => responses
+      .where(
+        (InspectionResponse response) =>
+            response.conditionRating == ConditionRating.criticalOutOfService,
+      )
+      .length;
+}
