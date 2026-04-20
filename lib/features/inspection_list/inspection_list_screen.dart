@@ -36,6 +36,9 @@ class _InspectionListScreenState extends ConsumerState<InspectionListScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(workspaceProvider);
+    if (controller.isLoading && controller.inspections.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final inspections = controller.filteredInspections;
     return SingleChildScrollView(
       child: Column(
@@ -48,6 +51,7 @@ class _InspectionListScreenState extends ConsumerState<InspectionListScreen> {
             child: Column(
               children: [
                 TextField(
+                  key: const Key('inspection_search_field'),
                   controller: _searchController,
                   onChanged: (value) {
                     setState(() {
@@ -123,14 +127,14 @@ class _InspectionList extends StatelessWidget {
     return SectionCard(
       title: 'Inspection Records',
       subtitle: results.isEmpty
-          ? 'No inspections match the current search.'
+          ? 'No inspections to show.'
           : '${results.length} inspection(s) found',
       child: Column(
         children: [
           if (results.isEmpty)
             _EmptyState(
-              title: 'No matches',
-              body: 'Try a different work order, customer, or status filter.',
+              title: 'No inspections yet',
+              body: 'Tap New Inspection to start.',
             )
           else
             for (final inspection in results) ...[
@@ -289,12 +293,6 @@ class _SummaryPanel extends StatelessWidget {
             onPressed: () => context.go('/inspection/new'),
             icon: const Icon(Icons.add),
             label: const Text('New Inspection'),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.file_download_outlined),
-            label: const Text('Export bundle'),
           ),
         ],
       ),

@@ -25,7 +25,7 @@ class PdfService {
   }) async {
     final document = pw.Document(
       title: reportTitle,
-      author: 'CTS Fluid Power',
+      author: data.branding.companyName,
       subject: reportTitle,
       keywords: 'CTS Fluid Power, inspection, report, hydraulics, fluid power',
       compress: compress,
@@ -107,7 +107,7 @@ class PdfService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    _eyebrow('CTS Fluid Power'),
+                    _eyebrow(data.branding.companyName),
                     pw.SizedBox(height: 4),
                     pw.Text(
                       reportTitle,

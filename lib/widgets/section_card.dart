@@ -8,7 +8,7 @@ class SectionCard extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.padding = const EdgeInsets.all(20),
-    this.topAccent = true,
+    this.topAccent = false,
   });
 
   final String title;
@@ -29,7 +29,7 @@ class SectionCard extends StatelessWidget {
               top: 0,
               bottom: null,
               child: Container(
-                height: 4,
+                height: 3,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [

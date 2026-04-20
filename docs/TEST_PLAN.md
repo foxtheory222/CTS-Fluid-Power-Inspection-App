@@ -34,7 +34,7 @@ Use a fix-test-fix loop:
 - Status transitions.
 - Action item creation and updates.
 - Search and duplicate rules.
-- Export/import metadata handling.
+- Local inspection persistence and PDF file generation.
 
 ### Widget Tests
 - Dashboard state rendering.
@@ -48,17 +48,11 @@ Use a fix-test-fix loop:
 - Photo capture or photo service fallback.
 - PDF generation and file existence.
 - Email/share handoff confirmation.
-- Duplicate, export, and import flow.
+- Duplicate and local persistence flow.
 
-### Regression Tests
-- Clean pass inspection.
-- Inspection with At Risk items.
-- Inspection with Unsatisfactory items.
-- Inspection with Critical / Out of Service items.
-- Inspection with many photos.
-- Inspection with hose replacement entries.
-- Exported and re-imported inspection.
-- Placeholder logo and sample media asset availability.
+### Regression Scope
+- Re-run the full unit, widget, and emulator flow after changes to persistence, validation, sharing, navigation, or report generation.
+- Verify logo assets and bundled sample media continue to resolve.
 
 ## Emulator Acceptance Flow
 1. Launch the app.
@@ -78,9 +72,9 @@ Use a fix-test-fix loop:
 15. Open or share the PDF.
 16. Confirm emailed status.
 17. Return to the dashboard and verify counts.
-18. Search, duplicate, export, and import the inspection.
+18. Search and duplicate the inspection.
 
 ## Regression Fixture Expectations
-- Seeded fixtures should exercise clean, flagged, critical, and export/import states.
-- Fixtures should include local photos, a drawn signature, and at least one generated PDF path.
+- Test data should exercise clean, flagged, and critical states.
+- Test data should include local photos, a drawn signature, and a generated PDF path.
 - Fixture data should be deterministic so document-number assertions remain stable.

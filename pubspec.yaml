@@ -37,6 +37,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   mocktail: ^1.0.4
   sqflite_common_ffi: ^2.3.6
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -60,3 +61,10 @@ flutter:
           weight: 500
         - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
+
+flutter_launcher_icons:
+  android: true
+  image_path_android: assets/logo/cts_launcher_icon.png
+  adaptive_icon_background: "#09182E"
+  adaptive_icon_foreground: assets/logo/cts_launcher_foreground.png
+  min_sdk_android: 21

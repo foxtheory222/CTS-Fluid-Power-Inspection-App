@@ -231,4 +231,18 @@ void main() {
       contains('CTS_Fluid_Power_Inspection_Report_20260418-0001_'),
     );
   });
+
+  test('generateInspectionReportFile writes a QA sample pdf to build output', () async {
+    final service = PdfService(compress: false);
+    final outputDirectory = Directory('build/sample_reports');
+    await outputDirectory.create(recursive: true);
+
+    final file = await service.generateInspectionReportFile(
+      buildReport(),
+      outputDirectory: outputDirectory,
+    );
+
+    expect(await file.exists(), isTrue);
+    expect(await file.length(), greaterThan(1000));
+  });
 }

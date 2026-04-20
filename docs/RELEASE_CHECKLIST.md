@@ -7,14 +7,14 @@
 - The app remains offline-only and local-only throughout the workflow.
 
 ## Functionality
-- New, edit, duplicate, search, export, and import flows work.
+- New, edit, duplicate, and search flows work.
 - Completion validation blocks incomplete inspections.
 - Critical items require lockout/tagout acknowledgement.
 - PDF generation succeeds and stores a local file.
 - Email/share handoff works and emailed status updates only after confirmation.
 - Photos, signatures, and local file paths are stable.
-- Recent recipient history and customer email mappings persist locally.
-- Sample and placeholder assets resolve correctly in the app shell.
+- Visible controls map to working flows only.
+- Logo and sample media assets resolve correctly in the app shell.
 
 ## Quality
 - `dart format .` passes.
@@ -26,10 +26,8 @@
 
 ## Release Artifacts
 - APK is generated and verified.
-- Sample inspections or regression fixtures are available for QA.
-- Export/import bundles are generated from the local inspection record and media files.
+- A sample inspection and generated PDF are available for QA.
 - Documentation is current:
-  - `AGENTS.md`
   - `README.md`
   - `docs/PRODUCT_SPEC.md`
   - `docs/UI_SPEC.md`

@@ -21,14 +21,19 @@ class DashboardMetric {
 
 class InspectionPhotoView {
   const InspectionPhotoView({
-    required this.assetPath,
+    this.assetPath,
+    this.filePath,
     required this.caption,
     required this.sectionTitle,
     required this.itemLabel,
     required this.capturedAt,
-  });
+  }) : assert(
+         assetPath != null || filePath != null,
+         'InspectionPhotoView requires an assetPath or filePath.',
+       );
 
-  final String assetPath;
+  final String? assetPath;
+  final String? filePath;
   final String caption;
   final String sectionTitle;
   final String itemLabel;

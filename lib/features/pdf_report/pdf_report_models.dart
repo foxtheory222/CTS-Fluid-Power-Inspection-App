@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../../core/constants.dart';
+
 enum InspectionReportStatus { draft, inProgress, complete, emailed }
 
 extension InspectionReportStatusLabel on InspectionReportStatus {
@@ -41,8 +43,8 @@ extension ReportConditionRatingLabel on ReportConditionRating {
 
 class InspectionReportBranding {
   const InspectionReportBranding({
-    this.companyName = 'CTS Fluid Power',
-    this.logoAssetPath,
+    this.companyName = AppConstants.brandCompanyName,
+    this.logoAssetPath = AppConstants.placeholderLogoAsset,
     this.logoBytes,
   });
 

@@ -15,122 +15,147 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(workspaceProvider);
+    if (controller.isLoading && controller.inspections.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final metrics = controller.dashboardMetrics;
+    final inspections = controller.recentInspections;
+    final critical = inspections
+        .where((item) => item.criticalCount > 0)
+        .toList(growable: false);
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _HeroBanner(
+          _OverviewHero(
+            criticalCount: critical.length,
+            onSearchSubmitted: (String value) {
+              controller.setSearchQuery(value);
+              context.go('/inspections');
+            },
             onNewInspection: () => context.go('/inspection/new'),
             onOpenInspections: () => context.go('/inspections'),
             onOpenActions: () => context.go('/actions'),
           ),
           const SizedBox(height: 18),
+          _MetricsSection(metrics: metrics),
+          const SizedBox(height: 18),
+          if (inspections.isEmpty) ...[
+            const _EmptyPanel(
+              title: 'No inspections yet',
+              body: 'Tap New Inspection to start.',
+              icon: Icons.note_add_outlined,
+            ),
+            const SizedBox(height: 18),
+          ],
           LayoutBuilder(
             builder: (context, constraints) {
-              final twoColumn = constraints.maxWidth >= 1180;
-              return twoColumn
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _MetricsSection(metrics: metrics)),
-                        const SizedBox(width: 18),
-                        SizedBox(
-                          width: 360,
-                          child: _CriticalReportsPanel(
-                            inspections: controller.recentInspections,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _MetricsSection(metrics: metrics),
-                        const SizedBox(height: 18),
-                        _CriticalReportsPanel(
-                          inspections: controller.recentInspections,
-                        ),
-                      ],
-                    );
+              final twoColumn = constraints.maxWidth >= 1100;
+              final recentPanel = _RecentInspectionsPanel(
+                inspections: inspections,
+              );
+              final alertPanel = _CriticalReportsPanel(inspections: critical);
+              if (twoColumn) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 5, child: recentPanel),
+                    const SizedBox(width: 18),
+                    Expanded(flex: 3, child: alertPanel),
+                  ],
+                );
+              }
+              return Column(
+                children: [recentPanel, const SizedBox(height: 18), alertPanel],
+              );
             },
           ),
           const SizedBox(height: 18),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 1180;
-              return wide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _RecentInspectionsPanel(
-                            inspections: controller.recentInspections,
-                          ),
-                        ),
-                        const SizedBox(width: 18),
-                        const Expanded(child: _QuickActionsPanel()),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _RecentInspectionsPanel(
-                          inspections: controller.recentInspections,
-                        ),
-                        const SizedBox(height: 18),
-                        const _QuickActionsPanel(),
-                      ],
-                    );
-            },
-          ),
+          const _QuickActionsPanel(),
         ],
       ),
     );
   }
 }
 
-class _HeroBanner extends StatelessWidget {
-  const _HeroBanner({
+class _OverviewHero extends StatelessWidget {
+  const _OverviewHero({
+    required this.criticalCount,
+    required this.onSearchSubmitted,
     required this.onNewInspection,
     required this.onOpenInspections,
     required this.onOpenActions,
   });
 
+  final int criticalCount;
+  final ValueChanged<String> onSearchSubmitted;
   final VoidCallback onNewInspection;
   final VoidCallback onOpenInspections;
   final VoidCallback onOpenActions;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [CtsPalette.navyAlt, CtsPalette.navy, Color(0xFF132944)],
+    return Material(
+      color: Colors.white,
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.05),
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFF7F9FC)],
+          ),
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final stacked = constraints.maxWidth < 1060;
+            final summaryCard = _HeroAlertCard(criticalCount: criticalCount);
+            final mainContent = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Dashboard',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: CtsPalette.orangeSoft,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Dashboard',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: CtsPalette.orangeMuted,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 Text(
-                  'Fast access to draft, in-progress, complete, and emailed inspections from a clean tablet layout built for field work.',
+                  'Tablet workflow for offline field inspections.',
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontSize: stacked ? 30 : 36,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Create inspections fast, surface critical issues quickly, and keep PDFs and email handoff on the device.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.82),
-                    height: 1.35,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  key: const Key('dashboard_search_field'),
+                  onSubmitted: onSearchSubmitted,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    labelText: 'Search by customer or work order',
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -139,6 +164,7 @@ class _HeroBanner extends StatelessWidget {
                   runSpacing: 12,
                   children: [
                     FilledButton.icon(
+                      key: const Key('new_inspection_button'),
                       onPressed: onNewInspection,
                       icon: const Icon(Icons.add),
                       label: const Text('New Inspection'),
@@ -156,42 +182,77 @@ class _HeroBanner extends StatelessWidget {
                   ],
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 24),
-          Container(
-            width: 280,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-            ),
-            child: Column(
+            );
+
+            if (stacked) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  mainContent,
+                  const SizedBox(height: 18),
+                  summaryCard,
+                ],
+              );
+            }
+
+            return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Current focus',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const StatusBadge(
-                  label: 'Critical reports require LOTO acknowledgement',
-                  color: CtsPalette.danger,
-                  icon: Icons.warning_amber_rounded,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'All records stay on-device. PDF export, share, and email handoff are available without an online workflow.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    height: 1.35,
-                  ),
-                ),
+                Expanded(flex: 5, child: mainContent),
+                const SizedBox(width: 18),
+                Expanded(flex: 2, child: summaryCard),
               ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroAlertCard extends StatelessWidget {
+  const _HeroAlertCard({required this.criticalCount});
+
+  final int criticalCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCritical = criticalCount > 0;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: hasCritical
+            ? CtsPalette.danger.withValues(alpha: 0.1)
+            : CtsPalette.surfaceAlt,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Field focus',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          StatusBadge(
+            label: hasCritical
+                ? '$criticalCount critical report${criticalCount == 1 ? '' : 's'}'
+                : 'No critical reports',
+            color: hasCritical ? CtsPalette.danger : CtsPalette.success,
+            icon: hasCritical
+                ? Icons.warning_amber_rounded
+                : Icons.verified_outlined,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            hasCritical
+                ? 'Critical items remain visible from the dashboard so technicians can resolve LOTO-sensitive work first.'
+                : 'All records remain local to the tablet and are ready for PDF generation or email handoff.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -207,60 +268,70 @@ class _MetricsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      itemCount: metrics.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 260,
-        mainAxisExtent: 144,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-      ),
-      itemBuilder: (context, index) {
-        final metric = metrics[index];
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 1200
+            ? 3
+            : constraints.maxWidth >= 760
+            ? 2
+            : 1;
+        return GridView.builder(
+          itemCount: metrics.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisExtent: 154,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+          ),
+          itemBuilder: (context, index) {
+            final metric = metrics[index];
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: metric.color.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(metric.icon, color: metric.color),
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: metric.color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(metric.icon, color: metric.color),
+                        ),
+                        const Spacer(),
+                        Text(
+                          metric.value,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.displaySmall?.copyWith(fontSize: 34),
+                        ),
+                      ],
                     ),
                     const Spacer(),
                     Text(
-                      metric.value,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      metric.label,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      metric.subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
-                const Spacer(),
-                Text(
-                  metric.label,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  metric.subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -274,37 +345,25 @@ class _CriticalReportsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final critical = inspections
-        .where((item) => item.criticalCount > 0)
-        .toList(growable: false);
     return SectionCard(
-      title: 'Critical Reports',
-      subtitle:
-          'Flagged reports that need LOTO attention and customer follow-up.',
-      trailing: StatusBadge(
-        label: '${critical.length} critical',
-        color: CtsPalette.danger,
-        icon: Icons.warning_amber_rounded,
-        tight: true,
-      ),
-      child: Column(
-        children: [
-          if (critical.isEmpty)
-            _EmptyPanel(
+      title: 'Critical Alerts',
+      subtitle: 'Urgent reports that need immediate attention.',
+      child: inspections.isEmpty
+          ? const _EmptyPanel(
               title: 'No critical inspections',
               body:
-                  'The current dashboard set has no Critical / Out of Service reports.',
+                  'The current inspection set has no Critical / Out of Service reports.',
               icon: Icons.verified_outlined,
             )
-          else
-            ...critical.map(
-              (inspection) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _InspectionMiniCard(inspection: inspection),
-              ),
+          : Column(
+              children: [
+                for (final inspection in inspections) ...[
+                  _InspectionMiniCard(inspection: inspection),
+                  if (inspection != inspections.last)
+                    const SizedBox(height: 12),
+                ],
+              ],
             ),
-        ],
-      ),
     );
   }
 }
@@ -316,96 +375,62 @@ class _InspectionMiniCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    inspection.customer,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CtsPalette.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  inspection.customer,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                StatusBadge.forInspection(inspection.status),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              inspection.assetName,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
+              StatusBadge.forInspection(inspection.status),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            inspection.assetName,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 10),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 320;
-                final updatedText = Text(
-                  DateFormat('MMM d, h:mm a').format(inspection.lastUpdatedAt),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: CtsPalette.danger,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '${inspection.criticalCount} critical item${inspection.criticalCount == 1 ? '' : 's'}',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: CtsPalette.danger,
+                    fontWeight: FontWeight.w800,
                   ),
-                );
-
-                if (compact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: CtsPalette.danger,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '${inspection.criticalCount} critical item${inspection.criticalCount == 1 ? '' : 's'}',
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: CtsPalette.danger,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      updatedText,
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      color: CtsPalette.danger,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${inspection.criticalCount} critical item${inspection.criticalCount == 1 ? '' : 's'}',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: CtsPalette.danger,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
-                    updatedText,
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+                ),
+              ),
+              Text(
+                DateFormat('MMM d, h:mm a').format(inspection.lastUpdatedAt),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -421,17 +446,24 @@ class _RecentInspectionsPanel extends StatelessWidget {
     return SectionCard(
       title: 'Recent Inspections',
       subtitle: 'Most recently updated records.',
-      child: Column(
-        children: [
-          for (final inspection in inspections) ...[
-            _RecentInspectionRow(
-              inspection: inspection,
-              onOpen: () => context.go('/inspection/${inspection.id}'),
+      child: inspections.isEmpty
+          ? const _EmptyPanel(
+              title: 'No inspections yet',
+              body: 'Tap New Inspection to start.',
+              icon: Icons.note_add_outlined,
+            )
+          : Column(
+              children: [
+                for (final inspection in inspections) ...[
+                  _RecentInspectionRow(
+                    inspection: inspection,
+                    onOpen: () => context.go('/inspection/${inspection.id}'),
+                  ),
+                  if (inspection != inspections.last)
+                    const SizedBox(height: 12),
+                ],
+              ],
             ),
-            if (inspection != inspections.last) const SizedBox(height: 10),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -444,74 +476,73 @@ class _RecentInspectionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          inspection.customer,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(22),
+      child: Ink(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: CtsPalette.surfaceAlt,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        inspection.customer,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${inspection.documentNumber} · ${inspection.workOrderNumber}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${inspection.documentNumber} · ${inspection.workOrderNumber}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  StatusBadge.forInspection(inspection.status),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                inspection.assetName,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
+                StatusBadge.forInspection(inspection.status),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              inspection.assetName,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _MiniStat(
-                    icon: Icons.photo_library_outlined,
-                    value: inspection.photoCount.toString(),
-                    label: 'Photos',
-                  ),
-                  _MiniStat(
-                    icon: Icons.assignment_turned_in_outlined,
-                    value: inspection.actionItems.length.toString(),
-                    label: 'Actions',
-                  ),
-                  _MiniStat(
-                    icon: Icons.warning_amber_rounded,
-                    value: inspection.flaggedCount.toString(),
-                    label: 'Flags',
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _MiniStat(
+                  icon: Icons.photo_library_outlined,
+                  value: inspection.photoCount.toString(),
+                  label: 'Photos',
+                ),
+                _MiniStat(
+                  icon: Icons.assignment_turned_in_outlined,
+                  value: inspection.actionItems.length.toString(),
+                  label: 'Actions',
+                ),
+                _MiniStat(
+                  icon: Icons.warning_amber_rounded,
+                  value: inspection.flaggedCount.toString(),
+                  label: 'Flags',
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -534,8 +565,9 @@ class _MiniStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: CtsPalette.lineSoft),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -561,30 +593,43 @@ class _QuickActionsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Quick Actions',
-      subtitle: 'Common tablet shortcuts for field work.',
-      child: Column(
-        children: [
-          _ActionButton(
-            icon: Icons.add_circle_outline,
-            title: 'Start new inspection',
-            subtitle: 'Open the full inspection editor.',
-            onTap: () => context.go('/inspection/new'),
-          ),
-          const SizedBox(height: 12),
-          _ActionButton(
-            icon: Icons.search_outlined,
-            title: 'Search inspections',
-            subtitle: 'Find by customer, work order, or document number.',
-            onTap: () => context.go('/inspections'),
-          ),
-          const SizedBox(height: 12),
-          _ActionButton(
-            icon: Icons.assignment_turned_in_outlined,
-            title: 'Review action items',
-            subtitle: 'See auto-generated and manual follow-up items.',
-            onTap: () => context.go('/actions'),
-          ),
-        ],
+      subtitle: 'Common field shortcuts for technicians.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 1200
+              ? 3
+              : constraints.maxWidth >= 720
+              ? 2
+              : 1;
+          return GridView.count(
+            crossAxisCount: columns,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: columns == 1 ? 3.6 : 2.6,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            children: [
+              _ActionButton(
+                icon: Icons.add_circle_outline,
+                title: 'Start new inspection',
+                subtitle: 'Open the full inspection editor.',
+                onTap: () => context.go('/inspection/new'),
+              ),
+              _ActionButton(
+                icon: Icons.search_outlined,
+                title: 'Search inspections',
+                subtitle: 'Find by customer, work order, or document number.',
+                onTap: () => context.go('/inspections'),
+              ),
+              _ActionButton(
+                icon: Icons.assignment_turned_in_outlined,
+                title: 'Review action items',
+                subtitle: 'See auto-generated and manual follow-up items.',
+                onTap: () => context.go('/actions'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -612,11 +657,9 @@ class _ActionButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: CtsPalette.surfaceAlt,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+          border: Border.all(color: CtsPalette.lineSoft),
         ),
         child: Row(
           children: [
@@ -624,7 +667,7 @@ class _ActionButton extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: CtsPalette.orange.withValues(alpha: 0.14),
+                color: CtsPalette.orange.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: CtsPalette.orange),
@@ -633,6 +676,7 @@ class _ActionButton extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     title,
@@ -673,7 +717,7 @@ class _EmptyPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: CtsPalette.surfaceAlt,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(

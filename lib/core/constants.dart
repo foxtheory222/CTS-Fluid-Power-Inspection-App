@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppConstants {
   static const String appName = 'CTS Fluid Power Inspection App';
+  static const String brandCompanyName = 'Combined Technical Services';
   static const String reportTitle = 'CTS Fluid Power Inspection Report';
   static const String placeholderLogoAsset = 'assets/logo/cts_logo.png';
   static const String samplePhotoAssetOne = 'assets/demo/sample_photo_1.jpg';

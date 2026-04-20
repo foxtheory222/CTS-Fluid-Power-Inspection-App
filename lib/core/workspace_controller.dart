@@ -1,115 +1,269 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'dart:io';
 
-import 'constants.dart';
-import 'theme.dart';
+import 'package:flutter/material.dart';
+
 import '../data/models/inspection_enums.dart';
+import '../data/models/inspection_models.dart';
+import '../data/repositories/inspection_repository.dart';
+import '../features/pdf_report/inspection_report_mapper.dart';
+import '../services/email_service.dart';
+import '../services/pdf_service.dart';
+import '../services/photo_service.dart';
+import 'constants.dart';
+import 'file_utils.dart';
+import 'theme.dart';
+import 'validators.dart';
 import 'workspace_models.dart';
 
 class AppWorkspaceController extends ChangeNotifier {
-  AppWorkspaceController() : _inspections = _seedInspections();
+  AppWorkspaceController({
+    required InspectionRepository repository,
+    required PdfService pdfService,
+    required PhotoService photoService,
+    required EmailService emailService,
+  }) : _repository = repository,
+       _pdfService = pdfService,
+       _photoService = photoService,
+       _emailService = emailService {
+    refresh();
+  }
 
-  final List<InspectionSummary> _inspections;
+  final InspectionRepository _repository;
+  final PdfService _pdfService;
+  final PhotoService _photoService;
+  final EmailService _emailService;
+
+  final List<InspectionRecord> _records = <InspectionRecord>[];
+  bool _isLoading = true;
+  String? _errorMessage;
   String _searchQuery = '';
   InspectionStatus? _statusFilter;
 
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
   String get searchQuery => _searchQuery;
   InspectionStatus? get statusFilter => _statusFilter;
+  PhotoService get photoService => _photoService;
 
-  List<InspectionSummary> get inspections => List.unmodifiable(_inspections);
+  List<InspectionRecord> get inspectionRecords => List.unmodifiable(_records);
+
+  List<InspectionSummary> get inspections =>
+      _records.map(_toSummary).toList(growable: false);
 
   List<InspectionSummary> get filteredInspections {
-    final query = _searchQuery.trim().toLowerCase();
-    return _inspections
-        .where((inspection) {
-          final matchesQuery =
+    final String query = _searchQuery.trim().toLowerCase();
+    return inspections
+        .where((InspectionSummary inspection) {
+          final bool matchesQuery =
               query.isEmpty || inspection.searchableText.contains(query);
-          final matchesStatus =
+          final bool matchesStatus =
               _statusFilter == null || inspection.status == _statusFilter;
           return matchesQuery && matchesStatus;
         })
         .toList(growable: false);
   }
 
-  List<DashboardMetric> get dashboardMetrics => [
-    DashboardMetric(
-      label: 'Draft',
-      value: _inspections
-          .where((item) => item.status == InspectionStatus.draft)
-          .length
-          .toString(),
-      icon: Icons.description_outlined,
-      color: CtsPalette.slate,
-      subtitle: 'Ready to continue',
-    ),
-    DashboardMetric(
-      label: 'In Progress',
-      value: _inspections
-          .where((item) => item.status == InspectionStatus.inProgress)
-          .length
-          .toString(),
-      icon: Icons.play_circle_outline,
-      color: CtsPalette.orange,
-      subtitle: 'Actively being filled out',
-    ),
-    DashboardMetric(
-      label: 'Complete',
-      value: _inspections
-          .where((item) => item.status == InspectionStatus.complete)
-          .length
-          .toString(),
-      icon: Icons.verified_outlined,
-      color: CtsPalette.success,
-      subtitle: 'Validated and signed',
-    ),
-    DashboardMetric(
-      label: 'Emailed',
-      value: _inspections
-          .where((item) => item.status == InspectionStatus.emailed)
-          .length
-          .toString(),
-      icon: Icons.mark_email_read_outlined,
-      color: CtsPalette.info,
-      subtitle: 'Handed off to the customer',
-    ),
-    DashboardMetric(
-      label: 'Critical',
-      value: _inspections
-          .where((item) => item.criticalCount > 0)
-          .length
-          .toString(),
-      icon: Icons.warning_amber_rounded,
-      color: CtsPalette.danger,
-      subtitle: 'LOTO attention required',
-    ),
-    DashboardMetric(
-      label: 'Photos',
-      value: _inspections
-          .fold<int>(0, (sum, item) => sum + item.photoCount)
-          .toString(),
-      icon: Icons.photo_library_outlined,
-      color: CtsPalette.orangeSoft,
-      subtitle: 'Stored locally on device',
-    ),
-  ];
+  List<DashboardMetric> get dashboardMetrics {
+    final List<InspectionRecord> source = _records;
+    final int photoTotal = source.fold<int>(
+      0,
+      (int sum, InspectionRecord item) => sum + item.photoCount,
+    );
+    return <DashboardMetric>[
+      DashboardMetric(
+        label: 'Draft',
+        value: source
+            .where(
+              (InspectionRecord item) => item.status == InspectionStatus.draft,
+            )
+            .length
+            .toString(),
+        icon: Icons.description_outlined,
+        color: CtsPalette.slate,
+        subtitle: 'Saved locally and ready to continue',
+      ),
+      DashboardMetric(
+        label: 'Complete',
+        value: source
+            .where(
+              (InspectionRecord item) =>
+                  item.status == InspectionStatus.complete,
+            )
+            .length
+            .toString(),
+        icon: Icons.verified_outlined,
+        color: CtsPalette.success,
+        subtitle: 'Validated and signed',
+      ),
+      DashboardMetric(
+        label: 'Emailed',
+        value: source
+            .where(
+              (InspectionRecord item) =>
+                  item.status == InspectionStatus.emailed,
+            )
+            .length
+            .toString(),
+        icon: Icons.mark_email_read_outlined,
+        color: CtsPalette.info,
+        subtitle: 'Shared from the tablet',
+      ),
+      DashboardMetric(
+        label: 'Critical',
+        value: source
+            .where((InspectionRecord item) => item.hasCriticalItems)
+            .length
+            .toString(),
+        icon: Icons.warning_amber_rounded,
+        color: CtsPalette.danger,
+        subtitle: 'Requires LOTO acknowledgement',
+      ),
+      DashboardMetric(
+        label: 'Photos',
+        value: photoTotal.toString(),
+        icon: Icons.photo_library_outlined,
+        color: CtsPalette.secondaryBlue,
+        subtitle: 'Stored on this device',
+      ),
+    ];
+  }
 
   InspectionSummary? inspectionById(String id) {
-    for (final inspection in _inspections) {
-      if (inspection.id == id) {
-        return inspection;
+    final InspectionRecord? record = recordById(id);
+    if (record == null) {
+      return null;
+    }
+    return _toSummary(record);
+  }
+
+  InspectionRecord? recordById(String id) {
+    for (final InspectionRecord record in _records) {
+      if (record.id == id) {
+        return record;
       }
     }
     return null;
   }
 
   List<InspectionSummary> get recentInspections {
-    final copy = List<InspectionSummary>.of(_inspections);
-    copy.sort((a, b) => b.lastUpdatedAt.compareTo(a.lastUpdatedAt));
-    return copy.take(6).toList(growable: false);
+    final List<InspectionRecord> copy = List<InspectionRecord>.of(_records)
+      ..sort(
+        (InspectionRecord a, InspectionRecord b) =>
+            b.updatedAt.compareTo(a.updatedAt),
+      );
+    return copy.take(6).map(_toSummary).toList(growable: false);
   }
 
   List<InspectionActionItemView> get openActionItems =>
-      _inspections.expand((item) => item.actionItems).toList(growable: false);
+      _records.expand(_actionItemViewsForRecord).toList(growable: false);
+
+  Future<void> refresh() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final List<InspectionRecord> records = await _repository.allInspections();
+      _records
+        ..clear()
+        ..addAll(records);
+      _sortRecords();
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<InspectionRecord?> loadInspectionRecord(String id) async {
+    final InspectionRecord? local = recordById(id);
+    if (local != null) {
+      return local.clone();
+    }
+    final InspectionRecord? loaded = await _repository.getInspection(id);
+    if (loaded != null) {
+      _upsertRecord(loaded, notify: true);
+      return loaded.clone();
+    }
+    return null;
+  }
+
+  Future<InspectionRecord> createInspection() async {
+    final InspectionRecord created = await _repository.createInspection();
+    _upsertRecord(created, notify: true);
+    return created.clone();
+  }
+
+  Future<InspectionRecord> duplicateInspection(InspectionSummary source) {
+    return duplicateInspectionById(source.id);
+  }
+
+  Future<InspectionRecord> duplicateInspectionById(String id) async {
+    final InspectionRecord source =
+        await loadInspectionRecord(id) ??
+        (throw StateError('Inspection not found: $id'));
+    final InspectionRecord duplicate = await _repository.duplicateInspection(
+      source,
+    );
+    _upsertRecord(duplicate, notify: true);
+    return duplicate.clone();
+  }
+
+  Future<InspectionRecord> saveInspection(InspectionRecord inspection) async {
+    final InspectionRecord saved = await _repository.saveInspection(
+      inspection.clone(),
+    );
+    _upsertRecord(saved, notify: true);
+    return saved.clone();
+  }
+
+  Future<File> generatePdf(InspectionRecord inspection) async {
+    final Directory outputDirectory =
+        await FileUtils.inspectionReportsDirectory(inspection.id);
+    final File file = await _pdfService.generateInspectionReportFile(
+      InspectionReportMapper.fromInspection(inspection),
+      outputDirectory: outputDirectory,
+    );
+    final InspectionRecord updated = inspection.clone();
+    updated.generatedPdfPath = file.path;
+    await saveInspection(updated);
+    return file;
+  }
+
+  Future<EmailHandoffResult> sharePdf(InspectionRecord inspection) async {
+    File pdfFile;
+    if ((inspection.generatedPdfPath ?? '').trim().isEmpty) {
+      pdfFile = await generatePdf(inspection);
+    } else {
+      pdfFile = File(inspection.generatedPdfPath!);
+      if (!await pdfFile.exists()) {
+        pdfFile = await generatePdf(inspection);
+      }
+    }
+
+    return _emailService.handoffPdf(
+      request: EmailHandoffRequest(
+        pdfFile: pdfFile,
+        subject: '${AppConstants.reportTitle} ${inspection.documentNumber}'
+            .trim(),
+        body:
+            'Attached is the ${AppConstants.reportTitle} for ${inspection.customer}.',
+        customer: inspection.customer,
+      ),
+    );
+  }
+
+  Future<InspectionRecord> markEmailed(InspectionRecord inspection) async {
+    final InspectionRecord saved = await _repository.markEmailed(
+      inspection.clone(),
+    );
+    _upsertRecord(saved, notify: true);
+    return saved.clone();
+  }
+
+  ValidationResult validate(InspectionRecord inspection) {
+    return InspectionValidator.validateForCompletion(inspection);
+  }
 
   void setSearchQuery(String value) {
     if (value == _searchQuery) {
@@ -127,352 +281,233 @@ class AppWorkspaceController extends ChangeNotifier {
     notifyListeners();
   }
 
-  InspectionSummary createInspection() {
-    final now = DateTime.now();
-    final documentNumber = _nextDocumentNumberForDate(now);
-    final inspection = InspectionSummary(
-      id: _makeId(documentNumber),
-      documentNumber: documentNumber,
-      customer: '',
-      workOrderNumber: '',
-      customerReference: '',
-      assetName: '',
-      siteLocation: '',
-      technicianName: '',
-      servicingShop: '',
-      inspectionDateTime: now,
-      createdAt: now,
-      status: InspectionStatus.draft,
-      sections: _defaultSections(),
-      actionItems: [],
-      photos: [],
-      flaggedCount: 0,
-      atRiskCount: 0,
-      unsatisfactoryCount: 0,
-      criticalCount: 0,
-      photoCount: 0,
-      lastUpdatedAt: now,
+  void _upsertRecord(InspectionRecord record, {required bool notify}) {
+    final int index = _records.indexWhere(
+      (InspectionRecord existing) => existing.id == record.id,
     );
-    _inspections.insert(0, inspection);
-    notifyListeners();
-    return inspection;
-  }
-
-  InspectionSummary duplicateInspection(InspectionSummary source) {
-    final now = DateTime.now();
-    final documentNumber = _nextDocumentNumberForDate(now);
-    final clone = source.copyWith(
-      id: _makeId(documentNumber),
-      documentNumber: documentNumber,
-      status: InspectionStatus.draft,
-      createdAt: now,
-      inspectionDateTime: now,
-      completedAt: null,
-      emailedAt: null,
-      finalTechComments: null,
-      criticalAcknowledged: false,
-      generatedPdfPath: null,
-      sections: _defaultSections(),
-      actionItems: [],
-      photos: [],
-      flaggedCount: 0,
-      atRiskCount: 0,
-      unsatisfactoryCount: 0,
-      criticalCount: 0,
-      photoCount: 0,
-      lastUpdatedAt: now,
-    );
-    _inspections.insert(0, clone);
-    notifyListeners();
-    return clone;
-  }
-
-  void replaceInspection(InspectionSummary updated) {
-    final index = _inspections.indexWhere((item) => item.id == updated.id);
-    if (index != -1) {
-      _inspections[index] = updated;
+    if (index == -1) {
+      _records.add(record);
+    } else {
+      _records[index] = record;
+    }
+    _sortRecords();
+    if (notify) {
       notifyListeners();
     }
   }
 
-  String _nextDocumentNumberForDate(DateTime date) {
-    final dayStamp = DateFormat('yyyyMMdd').format(date);
-    final matches = _inspections
-        .where((item) => item.documentNumber.startsWith('$dayStamp-'))
+  void _sortRecords() {
+    _records.sort(
+      (InspectionRecord a, InspectionRecord b) =>
+          b.updatedAt.compareTo(a.updatedAt),
+    );
+  }
+
+  InspectionSummary _toSummary(InspectionRecord record) {
+    final List<InspectionPhotoView> photos = record.photos
+        .map(
+          (InspectionPhoto photo) => InspectionPhotoView(
+            filePath: photo.filePath,
+            caption: (photo.caption ?? '').trim().isEmpty
+                ? _labelForItem(record, photo.itemKey)
+                : photo.caption!,
+            sectionTitle: InspectionSectionKeys.titleFor(photo.sectionKey),
+            itemLabel: _labelForItem(record, photo.itemKey),
+            capturedAt: photo.capturedAt,
+          ),
+        )
+        .toList(growable: false);
+
+    final List<InspectionSectionView> sections = record.sections
+        .map(
+          (InspectionSectionProgress section) => InspectionSectionView(
+            key: section.sectionKey,
+            title: section.title,
+            completionState: section.completionState,
+            summary: _sectionSummary(record, section.sectionKey),
+            photoCount: record.photos
+                .where(
+                  (InspectionPhoto photo) =>
+                      photo.sectionKey == section.sectionKey,
+                )
+                .length,
+            flaggedCount: _flaggedCountForSection(record, section.sectionKey),
+            criticalWarning:
+                _criticalCountForSection(record, section.sectionKey) > 0,
+          ),
+        )
+        .toList(growable: false);
+
+    return InspectionSummary(
+      id: record.id,
+      documentNumber: record.documentNumber,
+      customer: record.customer,
+      workOrderNumber: record.workOrderNumber,
+      customerReference: record.customerReference,
+      assetName: record.assetName,
+      siteLocation: record.siteLocation,
+      technicianName: record.technicianName,
+      servicingShop: record.servicingShop,
+      inspectionDateTime: record.inspectionDateTime,
+      createdAt: record.createdAt,
+      status: record.status,
+      sections: sections,
+      actionItems: _actionItemViewsForRecord(record),
+      photos: photos,
+      flaggedCount: record.flaggedItemCount,
+      atRiskCount: record.atRiskCount,
+      unsatisfactoryCount: record.unsatisfactoryCount,
+      criticalCount: record.criticalCount,
+      photoCount: record.photoCount,
+      lastUpdatedAt: record.updatedAt,
+      completedAt: record.completedAt,
+      emailedAt: record.emailedAt,
+      finalTechComments: record.finalTechComments,
+      criticalAcknowledged: record.criticalAcknowledged,
+      generatedPdfPath: record.generatedPdfPath,
+    );
+  }
+
+  List<InspectionActionItemView> _actionItemViewsForRecord(
+    InspectionRecord record,
+  ) {
+    return record.actionItems
+        .map(
+          (ActionItem item) => InspectionActionItemView(
+            title: item.title,
+            description: item.description,
+            conditionRating:
+                item.conditionRating ?? ConditionRating.monitorAtRisk,
+            sourceSection: item.sourceSectionKey == null
+                ? 'Manual action'
+                : InspectionSectionKeys.titleFor(item.sourceSectionKey!),
+            sourceItem: _labelForItem(record, item.sourceItemKey ?? ''),
+            partsRequired: item.partsRequired,
+            isAutoGenerated: item.isAutoGenerated,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  String _sectionSummary(InspectionRecord record, String sectionKey) {
+    final int photoCount = record.photos
+        .where((InspectionPhoto photo) => photo.sectionKey == sectionKey)
         .length;
-    final sequence = matches + 1;
-    return '$dayStamp-${sequence.toString().padLeft(4, '0')}';
+    final int flaggedCount = _flaggedCountForSection(record, sectionKey);
+    final int criticalCount = _criticalCountForSection(record, sectionKey);
+    if (criticalCount > 0) {
+      return '$criticalCount critical item${criticalCount == 1 ? '' : 's'} need immediate attention.';
+    }
+    if (flaggedCount > 0) {
+      return '$flaggedCount flagged item${flaggedCount == 1 ? '' : 's'} recorded in this section.';
+    }
+    if (photoCount > 0) {
+      return '$photoCount photo${photoCount == 1 ? '' : 's'} attached.';
+    }
+    if (sectionKey == InspectionSectionKeys.reviewCompletion) {
+      final int issueCount = validate(record).issues.length;
+      return issueCount == 0
+          ? 'Ready for completion.'
+          : '$issueCount completion issue${issueCount == 1 ? '' : 's'} remaining.';
+    }
+    return 'No issues recorded yet.';
   }
 
-  String _makeId(String documentNumber) {
-    return 'inspection_${documentNumber.replaceAll('-', '_')}';
+  int _flaggedCountForSection(InspectionRecord record, String sectionKey) {
+    final int responseFlags = record.responses.where((
+      InspectionResponse response,
+    ) {
+      return response.sectionKey == sectionKey &&
+          (response.isFlagged ||
+              (response.conditionRating?.isFlagged ?? false));
+    }).length;
+    final int hoseFlags =
+        sectionKey == InspectionSectionKeys.hoseConnectionInspection
+        ? record.hoseEntries.where((HoseEntry entry) => entry.hasFailure).length
+        : 0;
+    final int filterFlags =
+        sectionKey == InspectionSectionKeys.filtrationBreatherService
+        ? record.filterEntries.where((FilterEntry entry) {
+            return entry.replacedStatus == FilterReplacementStatus.no ||
+                (entry.conditionRating?.isFlagged ?? false);
+          }).length
+        : 0;
+    return responseFlags + hoseFlags + filterFlags;
   }
 
-  static List<InspectionSummary> _seedInspections() {
-    final today = DateTime(2026, 4, 20, 8, 30);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final inspection1 = InspectionSummary(
-      id: 'inspection_20260420_0001',
-      documentNumber: '20260420-0001',
-      customer: 'Moraine Quarry',
-      workOrderNumber: 'WO-48912',
-      customerReference: 'PO-55412',
-      assetName: 'HPU-12 Main Press',
-      siteLocation: 'East Pit Service Bay',
-      technicianName: 'R. Ellis',
-      servicingShop: 'CTS Edmonton Service',
-      inspectionDateTime: today,
-      createdAt: today,
-      status: InspectionStatus.complete,
-      sections: _defaultSections(
-        atRisk: 1,
-        unsat: 1,
-        critical: 0,
-        photoCount: 5,
-      ),
-      actionItems: [
-        InspectionActionItemView(
-          title: 'Replace return hose at manifold',
-          description:
-              'Cracking near the fitting on hose H-12 was flagged during the inspection.',
-          conditionRating: ConditionRating.unsatisfactory,
-          sourceSection: 'Hose & Connection Inspection',
-          sourceItem: 'Hose replacement entry',
-          partsRequired: 'Hose assembly, two JIC fittings, crimp sleeves',
-        ),
-      ],
-      photos: [
-        InspectionPhotoView(
-          assetPath: 'assets/demo/sample_photo_1.jpg',
-          caption: 'As-found unit overview',
-          sectionTitle: 'Job & Asset Identification',
-          itemLabel: 'HPU wide shot',
-          capturedAt: DateTime(2026, 4, 20, 8, 45),
-        ),
-        InspectionPhotoView(
-          assetPath: 'assets/demo/sample_photo_2.jpg',
-          caption: 'Tank nameplate close-up',
-          sectionTitle: 'Component Tracking',
-          itemLabel: 'Main Pump',
-          capturedAt: DateTime(2026, 4, 20, 9, 10),
-        ),
-      ],
-      flaggedCount: 2,
-      atRiskCount: 1,
-      unsatisfactoryCount: 1,
-      criticalCount: 0,
-      photoCount: 5,
-      lastUpdatedAt: today.add(const Duration(minutes: 32)),
-      completedAt: today.add(const Duration(hours: 1, minutes: 14)),
-      finalTechComments:
-          'Unit operating within service limits after hose replacement planning.',
-      generatedPdfPath:
-          '/storage/emulated/0/Download/CTS_Fluid_Power_Inspection_Report_20260420-0001.pdf',
-    );
-
-    final inspection2 = InspectionSummary(
-      id: 'inspection_20260420_0002',
-      documentNumber: '20260420-0002',
-      customer: 'North Basin Processing',
-      workOrderNumber: 'WO-48921',
-      customerReference: 'JOB-7745',
-      assetName: 'Transfer Pump Skid 04',
-      siteLocation: 'North Tank Farm',
-      technicianName: 'K. Morgan',
-      servicingShop: 'CTS Calgary Service',
-      inspectionDateTime: today.add(const Duration(hours: 2)),
-      createdAt: today.add(const Duration(hours: 2)),
-      status: InspectionStatus.emailed,
-      sections: _defaultSections(
-        atRisk: 2,
-        unsat: 1,
-        critical: 1,
-        photoCount: 7,
-      ),
-      actionItems: [
-        InspectionActionItemView(
-          title: 'Lockout/Tagout before restart',
-          description:
-              'Critical tank integrity issue requires isolation until corrective work is complete.',
-          conditionRating: ConditionRating.criticalOutOfService,
-          sourceSection: 'Fluid & Tank Service',
-          sourceItem: 'Tank integrity',
-          partsRequired: 'Tank repair kit, lockout hardware',
-        ),
-        InspectionActionItemView(
-          title: 'Replace breather element',
-          description:
-              'Breather housing contamination noted; element replacement recommended.',
-          conditionRating: ConditionRating.monitorAtRisk,
-          sourceSection: 'Filtration & Breather Service',
-          sourceItem: 'Breather replaced?',
-          partsRequired: 'Breather element 12-7781',
-        ),
-      ],
-      photos: [
-        InspectionPhotoView(
-          assetPath: 'assets/demo/sample_photo_1.jpg',
-          caption: 'Critical tank corrosion',
-          sectionTitle: 'Fluid & Tank Service',
-          itemLabel: 'Tank integrity',
-          capturedAt: DateTime(2026, 4, 20, 10, 12),
-        ),
-        InspectionPhotoView(
-          assetPath: 'assets/demo/sample_photo_2.jpg',
-          caption: 'Gauges under load',
-          sectionTitle: 'Operational Data / System Test',
-          itemLabel: 'System test',
-          capturedAt: DateTime(2026, 4, 20, 10, 18),
-        ),
-      ],
-      flaggedCount: 3,
-      atRiskCount: 2,
-      unsatisfactoryCount: 1,
-      criticalCount: 1,
-      photoCount: 7,
-      lastUpdatedAt: today.add(const Duration(hours: 2, minutes: 55)),
-      completedAt: today.add(const Duration(hours: 3, minutes: 10)),
-      emailedAt: today.add(const Duration(hours: 3, minutes: 42)),
-      criticalAcknowledged: true,
-      generatedPdfPath:
-          '/storage/emulated/0/Download/CTS_Fluid_Power_Inspection_Report_20260420-0002.pdf',
-    );
-
-    final inspection3 = InspectionSummary(
-      id: 'inspection_20260419_0001',
-      documentNumber: '20260419-0001',
-      customer: 'Prairie Rail Services',
-      workOrderNumber: 'WO-48888',
-      customerReference: 'PR-1182',
-      assetName: 'Hydraulic Lift Cart 2',
-      siteLocation: 'Maintenance Yard',
-      technicianName: 'T. Singh',
-      servicingShop: 'CTS Red Deer Service',
-      inspectionDateTime: yesterday,
-      createdAt: yesterday,
-      status: InspectionStatus.inProgress,
-      sections: _defaultSections(
-        atRisk: 0,
-        unsat: 0,
-        critical: 0,
-        photoCount: 2,
-      ),
-      actionItems: [],
-      photos: [
-        InspectionPhotoView(
-          assetPath: 'assets/demo/sample_photo_1.jpg',
-          caption: 'Asset identification photo',
-          sectionTitle: 'Job & Asset Identification',
-          itemLabel: 'HPU wide shot',
-          capturedAt: DateTime(2026, 4, 19, 15, 01),
-        ),
-      ],
-      flaggedCount: 0,
-      atRiskCount: 0,
-      unsatisfactoryCount: 0,
-      criticalCount: 0,
-      photoCount: 2,
-      lastUpdatedAt: yesterday.add(const Duration(hours: 1, minutes: 45)),
-    );
-
-    return [inspection2, inspection1, inspection3];
+  int _criticalCountForSection(InspectionRecord record, String sectionKey) {
+    return record.responses.where((InspectionResponse response) {
+      return response.sectionKey == sectionKey &&
+          response.conditionRating == ConditionRating.criticalOutOfService;
+    }).length;
   }
 
-  static List<InspectionSectionView> _defaultSections({
-    int atRisk = 0,
-    int unsat = 0,
-    int critical = 0,
-    int photoCount = 0,
-  }) {
-    return [
-      InspectionSectionView(
-        key: InspectionSectionKeys.jobAssetIdentification,
-        title:
-            inspectionSectionTitles[InspectionSectionKeys
-                .jobAssetIdentification]!,
-        completionState: SectionCompletionState.complete,
-        summary: 'Header complete and photos captured.',
-        photoCount: photoCount > 0 ? 2 : 0,
-      ),
-      InspectionSectionView(
-        key: InspectionSectionKeys.componentTracking,
-        title:
-            inspectionSectionTitles[InspectionSectionKeys.componentTracking]!,
-        completionState: SectionCompletionState.complete,
-        summary: 'Nameplates and component notes captured.',
-        photoCount: photoCount > 1 ? 2 : 0,
-      ),
-      InspectionSectionView(
-        key: InspectionSectionKeys.fluidTankService,
-        title: inspectionSectionTitles[InspectionSectionKeys.fluidTankService]!,
-        completionState: critical > 0
-            ? SectionCompletionState.blocked
-            : atRisk > 0 || unsat > 0
-            ? SectionCompletionState.inProgress
-            : SectionCompletionState.complete,
-        summary: critical > 0
-            ? 'Critical tank warning acknowledged.'
-            : atRisk > 0 || unsat > 0
-            ? 'Flagged fluid service items need follow-up.'
-            : 'Fluid condition is within tolerance.',
-        photoCount: photoCount > 2 ? 1 : 0,
-        flaggedCount: atRisk + unsat + critical,
-        criticalWarning: critical > 0,
-      ),
-      InspectionSectionView(
-        key: InspectionSectionKeys.hoseConnectionInspection,
-        title:
-            inspectionSectionTitles[InspectionSectionKeys
-                .hoseConnectionInspection]!,
-        completionState: atRisk > 0 || unsat > 0
-            ? SectionCompletionState.inProgress
-            : SectionCompletionState.complete,
-        summary: 'Hose replacement entries and fitting notes documented.',
-        photoCount: photoCount > 3 ? 1 : 0,
-        flaggedCount: atRisk > 0 ? 1 : 0,
-      ),
-      InspectionSectionView(
-        key: InspectionSectionKeys.filtrationBreatherService,
-        title:
-            inspectionSectionTitles[InspectionSectionKeys
-                .filtrationBreatherService]!,
-        completionState: atRisk > 0
-            ? SectionCompletionState.inProgress
-            : SectionCompletionState.complete,
-        summary: 'Filter replacement statuses captured.',
-        photoCount: photoCount > 4 ? 1 : 0,
-      ),
-      InspectionSectionView(
-        key: InspectionSectionKeys.operationalDataSystemTest,
-        title:
-            inspectionSectionTitles[InspectionSectionKeys
-                .operationalDataSystemTest]!,
-        completionState: SectionCompletionState.complete,
-        summary: 'System test readings stored.',
-        photoCount: photoCount > 5 ? 1 : 0,
-      ),
-      InspectionSectionView(
-        key: InspectionSectionKeys.followUpRepairsQuoting,
-        title:
-            inspectionSectionTitles[InspectionSectionKeys
-                .followUpRepairsQuoting]!,
-        completionState: atRisk > 0
-            ? SectionCompletionState.inProgress
-            : SectionCompletionState.complete,
-        summary: 'Quoted parts and follow-up actions are tracked.',
-        photoCount: photoCount > 6 ? 1 : 0,
-      ),
-      InspectionSectionView(
-        key: InspectionSectionKeys.reviewCompletion,
-        title: inspectionSectionTitles[InspectionSectionKeys.reviewCompletion]!,
-        completionState: atRisk > 0 || unsat > 0 || critical > 0
-            ? SectionCompletionState.blocked
-            : SectionCompletionState.complete,
-        summary: 'Ready for signoff when validation is clear.',
-        photoCount: 0,
-        flaggedCount: atRisk + unsat + critical,
-        criticalWarning: critical > 0,
-      ),
-    ];
+  String _labelForItem(InspectionRecord record, String itemKey) {
+    if (itemKey.isEmpty) {
+      return 'Inspection item';
+    }
+    if (itemKey.startsWith('hose:')) {
+      final String hoseId = itemKey.substring('hose:'.length);
+      final HoseEntry? entry = record.hoseEntries.cast<HoseEntry?>().firstWhere(
+        (HoseEntry? hose) => hose?.id == hoseId,
+        orElse: () => null,
+      );
+      if (entry == null) {
+        return 'Hose entry';
+      }
+      return (entry.hoseNameLocation ?? '').trim().isEmpty
+          ? 'Hose entry'
+          : entry.hoseNameLocation!;
+    }
+    if (itemKey.startsWith('filter:')) {
+      final String filterId = itemKey.substring('filter:'.length);
+      final FilterEntry? entry = record.filterEntries
+          .cast<FilterEntry?>()
+          .firstWhere(
+            (FilterEntry? filter) => filter?.id == filterId,
+            orElse: () => null,
+          );
+      if (entry == null) {
+        return 'Filter entry';
+      }
+      return (entry.filterName ?? '').trim().isEmpty
+          ? 'Filter entry'
+          : entry.filterName!;
+    }
+    if (itemKey.startsWith('component:')) {
+      final String componentId = itemKey.substring('component:'.length);
+      final ComponentEntry? entry = record.componentEntries
+          .cast<ComponentEntry?>()
+          .firstWhere(
+            (ComponentEntry? component) => component?.id == componentId,
+            orElse: () => null,
+          );
+      if (entry == null) {
+        return 'Component photo';
+      }
+      return entry.componentType;
+    }
+    if (itemKey.startsWith('required_item:')) {
+      final String requiredId = itemKey.substring('required_item:'.length);
+      final RequiredItemEntry? entry = record.requiredItems
+          .cast<RequiredItemEntry?>()
+          .firstWhere(
+            (RequiredItemEntry? item) => item?.id == requiredId,
+            orElse: () => null,
+          );
+      if (entry == null) {
+        return 'Required item';
+      }
+      return (entry.itemName ?? '').trim().isEmpty
+          ? 'Required item'
+          : entry.itemName!;
+    }
+    final InspectionResponse? response = record.responses
+        .cast<InspectionResponse?>()
+        .firstWhere(
+          (InspectionResponse? item) => item?.itemKey == itemKey,
+          orElse: () => null,
+        );
+    return response?.itemLabel ?? itemKey.replaceAll('_', ' ');
   }
 }

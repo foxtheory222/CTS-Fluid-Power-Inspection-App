@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../core/workspace_models.dart';
 import '../../core/workspace_providers.dart';
+import '../../data/models/inspection_models.dart';
+import '../../services/email_service.dart';
 import '../../widgets/photo_grid.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/status_badge.dart';
@@ -21,6 +23,10 @@ class InspectionDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(workspaceProvider);
     final inspection = controller.inspectionById(inspectionId);
+    final record = controller.recordById(inspectionId);
+    if (controller.isLoading && inspection == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (inspection == null) {
       return _NotFoundState(inspectionId: inspectionId);
     }
@@ -31,13 +37,14 @@ class InspectionDetailScreen extends ConsumerWidget {
         children: [
           _DetailHeader(
             inspection: inspection,
-            onEdit: () => context.go(
-              '/inspection/${inspection.id}/edit',
-              extra: inspection,
-            ),
-            onDuplicate: () {
-              final duplicate = controller.duplicateInspection(inspection);
-              context.go('/inspection/${duplicate.id}/edit', extra: duplicate);
+            onEdit: () => context.go('/inspection/${inspection.id}/edit'),
+            onDuplicate: () async {
+              final duplicate = await controller.duplicateInspection(
+                inspection,
+              );
+              if (context.mounted) {
+                context.go('/inspection/${duplicate.id}/edit');
+              }
             },
           ),
           const SizedBox(height: 18),
@@ -45,7 +52,92 @@ class InspectionDetailScreen extends ConsumerWidget {
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1180;
               final details = _DetailSections(inspection: inspection);
-              final side = _SideSummary(inspection: inspection);
+              final side = _SideSummary(
+                inspection: inspection,
+                record: record,
+                onGeneratePdf: () async {
+                  if (record == null) {
+                    return;
+                  }
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    await ref.read(workspaceProvider).generatePdf(record);
+                    if (!context.mounted) {
+                      return;
+                    }
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('PDF generated.')),
+                    );
+                  } catch (error) {
+                    if (!context.mounted) {
+                      return;
+                    }
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(error.toString())),
+                    );
+                  }
+                },
+                onSharePdf: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  if (record == null || record.generatedPdfPath == null) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Generate the PDF before sharing.'),
+                      ),
+                    );
+                    return;
+                  }
+                  try {
+                    await ref.read(workspaceProvider).sharePdf(record);
+                    if (!context.mounted) {
+                      return;
+                    }
+                    final bool? markEmailed = await showDialog<bool>(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Mark as emailed?'),
+                          content: const Text(
+                            'Mark this inspection as emailed?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Not now'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Mark emailed'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                    if (markEmailed == true) {
+                      await ref.read(workspaceProvider).markEmailed(record);
+                    }
+                    if (!context.mounted) {
+                      return;
+                    }
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          markEmailed == true
+                              ? 'Inspection marked as emailed.'
+                              : 'PDF ready to share.',
+                        ),
+                      ),
+                    );
+                  } on EmailServiceException catch (error) {
+                    if (!context.mounted) {
+                      return;
+                    }
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(error.message)),
+                    );
+                  }
+                },
+              );
               if (wide) {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,9 +611,17 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _SideSummary extends StatelessWidget {
-  const _SideSummary({required this.inspection});
+  const _SideSummary({
+    required this.inspection,
+    required this.record,
+    required this.onGeneratePdf,
+    required this.onSharePdf,
+  });
 
   final InspectionSummary inspection;
+  final InspectionRecord? record;
+  final VoidCallback onGeneratePdf;
+  final VoidCallback onSharePdf;
 
   @override
   Widget build(BuildContext context) {
@@ -534,21 +634,14 @@ class _SideSummary extends StatelessWidget {
             icon: Icons.picture_as_pdf_outlined,
             title: 'Generate PDF',
             subtitle: 'Create the branded local report.',
-            onTap: () {},
+            onTap: onGeneratePdf,
           ),
           const SizedBox(height: 12),
           _ActionButton(
             icon: Icons.email_outlined,
-            title: 'Email handoff',
+            title: 'Share / Email PDF',
             subtitle: 'Open the device mail or share flow.',
-            onTap: () {},
-          ),
-          const SizedBox(height: 12),
-          _ActionButton(
-            icon: Icons.file_download_outlined,
-            title: 'Export inspection',
-            subtitle: 'Bundle PDF and restore data locally.',
-            onTap: () {},
+            onTap: onSharePdf,
           ),
           const SizedBox(height: 16),
           _SummaryMini(

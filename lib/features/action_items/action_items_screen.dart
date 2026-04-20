@@ -14,6 +14,9 @@ class ActionItemsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(workspaceProvider);
+    if (controller.isLoading && controller.inspections.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final items = controller.openActionItems;
     return SingleChildScrollView(
       child: Column(

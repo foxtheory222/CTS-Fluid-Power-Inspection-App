@@ -20,32 +20,21 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(workspaceProvider);
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [CtsPalette.navy, Color(0xFF07142A), Color(0xFF0A1322)],
-            stops: [0.0, 0.38, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 1240;
-              final medium = constraints.maxWidth >= 960;
-              final railWidth = wide
-                  ? 252.0
-                  : medium
-                  ? 90.0
-                  : 80.0;
-              return Row(
-                children: [
-                  SizedBox(
+      backgroundColor: CtsPalette.cloud,
+      body: SafeArea(
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final extendedRail = constraints.maxWidth >= 1500;
+            final railWidth = extendedRail ? 224.0 : 92.0;
+            return Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 0, 18),
+                  child: SizedBox(
                     width: railWidth,
                     child: _SidebarRail(
-                      extended: wide,
+                      extended: extendedRail,
                       selectedIndex: selectedIndex,
                       onDestinationSelected: onDestinationSelected,
                       totalRecords: controller.inspections.length,
@@ -54,26 +43,37 @@ class AppShell extends ConsumerWidget {
                           .length,
                     ),
                   ),
-                  Expanded(
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
                     child: Column(
                       children: [
                         _TopStrip(
-                          wide: wide,
-                          metricValue: controller.inspections.length.toString(),
+                          totalRecords: controller.inspections.length,
+                          criticalRecords: controller.inspections
+                              .where(
+                                (inspection) => inspection.criticalCount > 0,
+                              )
+                              .length,
                         ),
+                        const SizedBox(height: 18),
                         Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                            child: child,
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1680),
+                              child: child,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -81,97 +81,111 @@ class AppShell extends ConsumerWidget {
 }
 
 class _TopStrip extends StatelessWidget {
-  const _TopStrip({required this.wide, required this.metricValue});
+  const _TopStrip({required this.totalRecords, required this.criticalRecords});
 
-  final bool wide;
-  final String metricValue;
+  final int totalRecords;
+  final int criticalRecords;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 860;
-          final titleBlock = Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.white,
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.92)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 1040;
+            final brandBlock = Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(18),
                   child: Image.asset(
                     'assets/logo/cts_logo.png',
-                    width: compact ? 108 : 136,
-                    height: compact ? 46 : 58,
+                    width: compact ? 220 : 300,
+                    height: compact ? 52 : 66,
                     fit: BoxFit.contain,
                   ),
                 ),
                 if (!compact) ...[
-                  const SizedBox(height: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'CTS Fluid Power Inspection App',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CTS Fluid Power Inspection App',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Offline tablet workflow for fluid power inspection reports',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Offline field inspections, PDF reports, and tablet share/email handoff.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ],
-            ),
-          );
+            );
 
-          final statusPills = Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: compact ? WrapAlignment.start : WrapAlignment.end,
-            children: [
-              _TopStatusPill(
-                icon: Icons.sync,
-                label: 'Local data only',
-                color: CtsPalette.orange,
-              ),
-              _TopStatusPill(
-                icon: Icons.lock_outline,
-                label: 'Offline ready',
-                color: CtsPalette.success,
-              ),
-              _TopStatusPill(
-                icon: Icons.list_alt_rounded,
-                label: '$metricValue total records',
-                color: CtsPalette.info,
-              ),
-            ],
-          );
+            final statusPills = Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: compact ? WrapAlignment.start : WrapAlignment.end,
+              children: [
+                _TopStatusPill(
+                  icon: Icons.sync_disabled_outlined,
+                  label: 'Local data only',
+                  color: CtsPalette.orange,
+                ),
+                _TopStatusPill(
+                  icon: Icons.wifi_off_rounded,
+                  label: 'Offline ready',
+                  color: CtsPalette.success,
+                ),
+                _TopStatusPill(
+                  icon: Icons.description_outlined,
+                  label: '$totalRecords records',
+                  color: CtsPalette.info,
+                ),
+                _TopStatusPill(
+                  icon: Icons.warning_amber_rounded,
+                  label: '$criticalRecords critical',
+                  color: CtsPalette.danger,
+                ),
+              ],
+            );
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [titleBlock, const SizedBox(height: 12), statusPills],
-          );
-        },
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [brandBlock, const SizedBox(height: 16), statusPills],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: brandBlock),
+                const SizedBox(width: 20),
+                Flexible(child: statusPills),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -193,9 +207,9 @@ class _TopStatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -205,8 +219,8 @@ class _TopStatusPill extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+              color: color,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -232,109 +246,119 @@ class _SidebarRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(18, 0, 12, 18),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: const BoxDecoration(
-                    color: CtsPalette.orange,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Inspection Suite',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showTrailHints = extended && constraints.maxHeight >= 720;
+        return Container(
+          decoration: BoxDecoration(
+            color: CtsPalette.navy,
+            borderRadius: BorderRadius.circular(30),
           ),
-          Expanded(
-            child: NavigationRail(
-              extended: extended,
-              selectedIndex: selectedIndex,
-              onDestinationSelected: onDestinationSelected,
-              labelType: extended ? null : NavigationRailLabelType.all,
-              leading: const SizedBox(height: 2),
-              trailing: Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Column(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+                child: Row(
                   children: [
-                    _RailHint(
-                      icon: Icons.today_outlined,
-                      title: 'Active',
-                      value: totalRecords.toString(),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Image.asset(
+                          'assets/logo/cts_launcher_icon.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    _RailHint(
-                      icon: Icons.warning_amber_rounded,
-                      title: 'Critical',
-                      value: criticalRecords.toString(),
-                      tint: CtsPalette.danger,
+                    if (extended) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CTS',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            Text(
+                              'Inspection App',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: const Color(0xFF90A5BD)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Expanded(
+                child: NavigationRail(
+                  extended: extended,
+                  minWidth: 72,
+                  minExtendedWidth: 192,
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: onDestinationSelected,
+                  labelType: extended ? null : NavigationRailLabelType.none,
+                  leading: const SizedBox(height: 4),
+                  trailing: showTrailHints
+                      ? Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
+                          child: Column(
+                            children: [
+                              _RailHint(
+                                icon: Icons.description_outlined,
+                                title: 'Active',
+                                value: totalRecords.toString(),
+                              ),
+                              const SizedBox(height: 8),
+                              _RailHint(
+                                icon: Icons.warning_amber_rounded,
+                                title: 'Critical',
+                                value: criticalRecords.toString(),
+                                tint: CtsPalette.danger,
+                              ),
+                            ],
+                          ),
+                        )
+                      : null,
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.space_dashboard_outlined),
+                      selectedIcon: Icon(Icons.space_dashboard_rounded),
+                      label: Text('Dashboard'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.search_outlined),
+                      selectedIcon: Icon(Icons.search_rounded),
+                      label: Text('Inspections'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.edit_document),
+                      selectedIcon: Icon(Icons.edit_document),
+                      label: Text('New Inspection'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.assignment_turned_in_outlined),
+                      selectedIcon: Icon(Icons.assignment_turned_in),
+                      label: Text('Action Items'),
                     ),
                   ],
                 ),
               ),
-              destinations: const [
-                NavigationRailDestination(
-                  icon: Icon(Icons.space_dashboard_outlined),
-                  selectedIcon: Icon(Icons.space_dashboard_rounded),
-                  label: Text('Dashboard'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.search_outlined),
-                  selectedIcon: Icon(Icons.search_rounded),
-                  label: Text('Inspections'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.edit_document),
-                  selectedIcon: Icon(Icons.edit_document),
-                  label: Text('New Inspection'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.assignment_turned_in_outlined),
-                  selectedIcon: Icon(Icons.assignment_turned_in),
-                  label: Text('Action Items'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings),
-                  label: Text('Settings'),
-                ),
-              ],
-            ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Landscape tablet layout with large touch targets and high-contrast controls.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.66),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -355,11 +379,11 @@ class _RailHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: tint.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
@@ -371,9 +395,9 @@ class _RailHint extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: Colors.white70),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: const Color(0xFF90A5BD),
+                  ),
                 ),
                 Text(
                   value,

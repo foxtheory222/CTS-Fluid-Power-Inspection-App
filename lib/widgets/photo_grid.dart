@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 import '../core/theme.dart';
 import '../core/workspace_models.dart';
@@ -8,7 +9,7 @@ class PhotoGrid extends StatelessWidget {
     super.key,
     required this.photos,
     this.emptyLabel = 'No photos added yet.',
-    this.showAddTile = true,
+    this.showAddTile = false,
   });
 
   final List<InspectionPhotoView> photos;
@@ -41,7 +42,7 @@ class PhotoGrid extends StatelessWidget {
           ),
           itemBuilder: (context, index) {
             if (showAddTile && index == itemCount - 1) {
-              return _AddPhotoTile(label: 'Add photo');
+              return const SizedBox.shrink();
             }
             final photo = items[index];
             return _PhotoCard(photo: photo, index: index + 1);
@@ -72,7 +73,10 @@ class _PhotoCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(photo.assetPath, fit: BoxFit.cover),
+                  if (photo.filePath != null)
+                    Image.file(File(photo.filePath!), fit: BoxFit.cover)
+                  else
+                    Image.asset(photo.assetPath!, fit: BoxFit.cover),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -139,64 +143,6 @@ class _PhotoCard extends StatelessWidget {
   }
 }
 
-class _AddPhotoTile extends StatelessWidget {
-  const _AddPhotoTile({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {},
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: CtsPalette.orange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.add_a_photo_outlined,
-                  color: CtsPalette.orange,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Camera or gallery',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _EmptyPhotoState extends StatelessWidget {
   const _EmptyPhotoState({required this.label});
 
@@ -234,11 +180,6 @@ class _EmptyPhotoState extends StatelessWidget {
                 context,
               ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
-          ),
-          FilledButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.add),
-            label: const Text('Add first photo'),
           ),
         ],
       ),

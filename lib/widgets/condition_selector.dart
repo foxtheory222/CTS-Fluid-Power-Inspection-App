@@ -18,6 +18,7 @@ class ConditionSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SegmentedButton<ConditionRating>(
+      emptySelectionAllowed: true,
       segments: const [
         ButtonSegment(
           value: ConditionRating.satisfactory,
@@ -67,7 +68,12 @@ class ConditionSelector extends StatelessWidget {
         }),
       ),
       selected: value == null ? <ConditionRating>{} : {value!},
-      onSelectionChanged: (selection) => onChanged(selection.first),
+      onSelectionChanged: (Set<ConditionRating> selection) {
+        if (selection.isEmpty) {
+          return;
+        }
+        onChanged(selection.first);
+      },
     );
   }
 }

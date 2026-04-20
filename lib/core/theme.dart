@@ -1,79 +1,103 @@
 import 'package:flutter/material.dart';
 
 class CtsPalette {
-  static const navy = Color(0xFF051125);
-  static const navyAlt = Color(0xFF09182E);
-  static const slate = Color(0xFF47607E);
-  static const slateMuted = Color(0xFF6B7D93);
-  static const orange = Color(0xFFEA6400);
-  static const orangeSoft = Color(0xFFFFA24A);
-  static const steel = Color(0xFF9FB1C5);
-  static const cloud = Color(0xFFE7EDF4);
-  static const surface = Color(0xFF0B172A);
-  static const surfaceAlt = Color(0xFF102138);
-  static const border = Color(0xFF23364D);
-  static const success = Color(0xFF33C48A);
-  static const warning = Color(0xFFF5A524);
-  static const danger = Color(0xFFE04B4B);
-  static const info = Color(0xFF5AA7FF);
+  static const navy = Color(0xFF0C2E57);
+  static const navyAlt = Color(0xFF103A6A);
+  static const ink = Color(0xFF16395F);
+  static const slate = Color(0xFF5C7390);
+  static const slateMuted = Color(0xFF7B8FA8);
+  static const steel = Color(0xFF4D6D95);
+  static const secondaryBlue = Color(0xFF1A97D6);
+  static const secondaryBlueSoft = Color(0xFFD9EFFA);
+  static const secondaryBlueMuted = Color(0xFF157EB4);
+  static const orange = secondaryBlue;
+  static const orangeSoft = secondaryBlueSoft;
+  static const orangeMuted = secondaryBlueMuted;
+  static const cloud = Color(0xFFF3F7FA);
+  static const mist = Color(0xFFE6EEF5);
+  static const surface = Colors.white;
+  static const surfaceAlt = Color(0xFFF8F9FB);
+  static const line = Color(0xFFD5DEE8);
+  static const lineSoft = Color(0xFFE6ECF2);
+  static const success = Color(0xFF218A63);
+  static const warning = Color(0xFFB67A1A);
+  static const danger = Color(0xFFC74343);
+  static const info = Color(0xFF2478B5);
 }
 
 ThemeData buildCtsTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
-  final scheme = ColorScheme(
-    brightness: brightness,
-    primary: CtsPalette.orange,
-    onPrimary: Colors.white,
-    secondary: CtsPalette.slate,
-    onSecondary: Colors.white,
-    error: CtsPalette.danger,
-    onError: Colors.white,
-    surface: dark ? CtsPalette.surface : Colors.white,
-    onSurface: dark ? Colors.white : CtsPalette.navy,
-    tertiary: CtsPalette.info,
-    onTertiary: Colors.white,
-    surfaceContainerHighest: dark
-        ? CtsPalette.surfaceAlt
-        : const Color(0xFFF2F5F8),
-    onSurfaceVariant: dark ? CtsPalette.steel : CtsPalette.slate,
-    outline: dark ? CtsPalette.border : const Color(0xFFD5DFEA),
-    outlineVariant: dark ? CtsPalette.border : const Color(0xFFE4EAF1),
-    shadow: Colors.black,
-    scrim: Colors.black,
-    inverseSurface: dark ? Colors.white : CtsPalette.navy,
-    onInverseSurface: dark ? CtsPalette.navy : Colors.white,
-    inversePrimary: CtsPalette.orangeSoft,
-    surfaceTint: CtsPalette.orange,
-  );
+  final scheme = dark
+      ? const ColorScheme.dark(
+          primary: CtsPalette.secondaryBlue,
+          onPrimary: Colors.white,
+          secondary: CtsPalette.steel,
+          onSecondary: Colors.white,
+          error: CtsPalette.danger,
+          onError: Colors.white,
+          surface: CtsPalette.navy,
+          onSurface: Colors.white,
+          tertiary: CtsPalette.info,
+          onTertiary: Colors.white,
+        ).copyWith(
+          surfaceContainerHighest: const Color(0xFF16263E),
+          onSurfaceVariant: const Color(0xFFB3C1D1),
+          outline: const Color(0xFF29405E),
+          outlineVariant: const Color(0xFF223652),
+          surfaceTint: CtsPalette.secondaryBlue,
+        )
+      : const ColorScheme.light(
+          primary: CtsPalette.secondaryBlue,
+          onPrimary: Colors.white,
+          secondary: CtsPalette.steel,
+          onSecondary: Colors.white,
+          error: CtsPalette.danger,
+          onError: Colors.white,
+          surface: CtsPalette.surface,
+          onSurface: CtsPalette.ink,
+          tertiary: CtsPalette.info,
+          onTertiary: Colors.white,
+        ).copyWith(
+          surfaceContainerHighest: CtsPalette.mist,
+          onSurfaceVariant: CtsPalette.slate,
+          outline: CtsPalette.line,
+          outlineVariant: CtsPalette.lineSoft,
+          surfaceTint: Colors.white,
+        );
 
   const baseTextTheme = TextTheme(
     displayLarge: TextStyle(
       fontFamily: 'PublicSans',
       fontWeight: FontWeight.w700,
+      letterSpacing: -1.2,
     ),
     displayMedium: TextStyle(
       fontFamily: 'PublicSans',
       fontWeight: FontWeight.w700,
+      letterSpacing: -0.8,
     ),
     displaySmall: TextStyle(
       fontFamily: 'PublicSans',
       fontWeight: FontWeight.w700,
+      letterSpacing: -0.6,
     ),
     headlineLarge: TextStyle(
       fontFamily: 'PublicSans',
       fontWeight: FontWeight.w700,
+      letterSpacing: -0.5,
     ),
     headlineMedium: TextStyle(
       fontFamily: 'PublicSans',
       fontWeight: FontWeight.w700,
+      letterSpacing: -0.4,
     ),
     headlineSmall: TextStyle(
       fontFamily: 'PublicSans',
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
     ),
     titleLarge: TextStyle(
       fontFamily: 'PublicSans',
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
     ),
     titleMedium: TextStyle(
       fontFamily: 'PublicSans',
@@ -83,19 +107,31 @@ ThemeData buildCtsTheme(Brightness brightness) {
       fontFamily: 'PublicSans',
       fontWeight: FontWeight.w600,
     ),
-    bodyLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w400),
-    bodyMedium: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w400),
-    bodySmall: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w400),
-    labelLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
-    labelMedium: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
-    labelSmall: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
+    bodyLarge: TextStyle(
+      fontFamily: 'Inter',
+      fontWeight: FontWeight.w400,
+      height: 1.3,
+    ),
+    bodyMedium: TextStyle(
+      fontFamily: 'Inter',
+      fontWeight: FontWeight.w400,
+      height: 1.3,
+    ),
+    bodySmall: TextStyle(
+      fontFamily: 'Inter',
+      fontWeight: FontWeight.w400,
+      height: 1.25,
+    ),
+    labelLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
+    labelMedium: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
+    labelSmall: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
   );
 
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
     colorScheme: scheme,
-    scaffoldBackgroundColor: dark ? CtsPalette.navy : const Color(0xFFF4F7FB),
+    scaffoldBackgroundColor: dark ? CtsPalette.navy : CtsPalette.cloud,
     fontFamily: 'Inter',
     textTheme: baseTextTheme.apply(
       bodyColor: scheme.onSurface,
@@ -112,87 +148,118 @@ ThemeData buildCtsTheme(Brightness brightness) {
       ),
     ),
     cardTheme: CardThemeData(
-      color: dark ? CtsPalette.surface : Colors.white,
-      elevation: 0,
+      color: dark ? const Color(0xFF12223A) : Colors.white,
+      elevation: dark ? 0 : 2,
+      shadowColor: Colors.black.withValues(alpha: dark ? 0.0 : 0.05),
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: dark
+              ? scheme.outlineVariant
+              : Colors.white.withValues(alpha: 0.9),
+        ),
       ),
       margin: EdgeInsets.zero,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: dark ? CtsPalette.surfaceAlt : Colors.white,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+      fillColor: dark ? const Color(0xFF16263E) : Colors.white,
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+      hintStyle: TextStyle(
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(color: scheme.outlineVariant),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: CtsPalette.orange, width: 1.8),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: scheme.outlineVariant),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      focusedBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(18)),
+        borderSide: BorderSide(color: CtsPalette.orange, width: 1.8),
+      ),
+      errorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(18)),
+        borderSide: BorderSide(color: CtsPalette.danger, width: 1.5),
+      ),
+      focusedErrorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(18)),
+        borderSide: BorderSide(color: CtsPalette.danger, width: 1.8),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: CtsPalette.orange,
+        backgroundColor: CtsPalette.secondaryBlue,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         textStyle: const TextStyle(
           fontFamily: 'Inter',
           fontWeight: FontWeight.w700,
+          fontSize: 14,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: CtsPalette.orange,
+        backgroundColor: CtsPalette.secondaryBlue,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         textStyle: const TextStyle(
           fontFamily: 'Inter',
           fontWeight: FontWeight.w700,
+          fontSize: 14,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: scheme.onSurface,
-        side: BorderSide(color: scheme.outlineVariant),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        foregroundColor: dark ? Colors.white : CtsPalette.ink,
+        backgroundColor: dark ? Colors.transparent : Colors.white,
+        side: BorderSide(color: dark ? scheme.outlineVariant : CtsPalette.line),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         textStyle: const TextStyle(
           fontFamily: 'Inter',
           fontWeight: FontWeight.w700,
+          fontSize: 14,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: dark ? CtsPalette.navyAlt : Colors.white,
-      indicatorColor: CtsPalette.orange.withValues(alpha: 0.16),
-      selectedIconTheme: const IconThemeData(color: CtsPalette.orange),
-      unselectedIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
+      backgroundColor: Colors.transparent,
+      useIndicator: true,
+      indicatorColor: CtsPalette.secondaryBlue.withValues(alpha: 0.24),
+      selectedIconTheme: const IconThemeData(color: Colors.white, size: 22),
+      unselectedIconTheme: const IconThemeData(
+        color: Color(0xFF90A5BD),
+        size: 20,
+      ),
       selectedLabelTextStyle: const TextStyle(
         fontFamily: 'Inter',
         fontWeight: FontWeight.w700,
-        color: CtsPalette.orange,
+        color: Colors.white,
       ),
-      unselectedLabelTextStyle: TextStyle(
+      unselectedLabelTextStyle: const TextStyle(
         fontFamily: 'Inter',
         fontWeight: FontWeight.w600,
-        color: scheme.onSurfaceVariant,
+        color: Color(0xFF90A5BD),
       ),
     ),
     dividerTheme: DividerThemeData(color: scheme.outlineVariant, thickness: 1),
     chipTheme: ChipThemeData(
-      backgroundColor: dark ? CtsPalette.surfaceAlt : const Color(0xFFF0F4F9),
+      backgroundColor: dark ? const Color(0xFF16263E) : CtsPalette.surfaceAlt,
       labelStyle: TextStyle(color: scheme.onSurface),
       side: BorderSide(color: scheme.outlineVariant),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     ),
   );
 }
