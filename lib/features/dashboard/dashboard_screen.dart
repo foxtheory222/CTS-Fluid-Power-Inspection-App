@@ -98,18 +98,14 @@ class _OverviewHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(30),
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(32),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Color(0xFFF7F9FC)],
-          ),
+          borderRadius: BorderRadius.circular(32),
+          color: Colors.white,
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -121,35 +117,36 @@ class _OverviewHero extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 8,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: CtsPalette.orangeSoft,
+                    color: CtsPalette.surfaceAlt,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    'Dashboard',
+                    'Inspection Operations',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: CtsPalette.orangeMuted,
+                      color: CtsPalette.steel,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Tablet workflow for offline field inspections.',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontSize: stacked ? 30 : 36,
+                  'Fluid Power Inspection Reports',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontSize: stacked ? 24 : 28,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  'Create inspections fast, surface critical issues quickly, and keep PDFs and email handoff on the device.',
+                  'Start new inspections, search existing records, and keep PDF reporting moving without leaving the device.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 TextField(
                   key: const Key('dashboard_search_field'),
                   onSubmitted: onSearchSubmitted,
@@ -158,7 +155,7 @@ class _OverviewHero extends StatelessWidget {
                     labelText: 'Search by customer or work order',
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -199,7 +196,7 @@ class _OverviewHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(flex: 5, child: mainContent),
-                const SizedBox(width: 18),
+                const SizedBox(width: 16),
                 Expanded(flex: 2, child: summaryCard),
               ],
             );
@@ -220,28 +217,35 @@ class _HeroAlertCard extends StatelessWidget {
     final hasCritical = criticalCount > 0;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: hasCritical
-            ? CtsPalette.danger.withValues(alpha: 0.1)
-            : CtsPalette.surfaceAlt,
-        borderRadius: BorderRadius.circular(24),
+        color: CtsPalette.navy,
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Field focus',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            'Critical reports',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 12),
+          Text(
+            hasCritical ? criticalCount.toString().padLeft(2, '0') : '00',
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+              color: Colors.white,
+              fontSize: 52,
+            ),
+          ),
+          const SizedBox(height: 8),
           StatusBadge(
             label: hasCritical
                 ? '$criticalCount critical report${criticalCount == 1 ? '' : 's'}'
                 : 'No critical reports',
-            color: hasCritical ? CtsPalette.danger : CtsPalette.success,
+            color: hasCritical ? CtsPalette.danger : CtsPalette.secondaryBlue,
             icon: hasCritical
                 ? Icons.warning_amber_rounded
                 : Icons.verified_outlined,
@@ -250,10 +254,10 @@ class _HeroAlertCard extends StatelessWidget {
           Text(
             hasCritical
                 ? 'Critical items remain visible from the dashboard so technicians can resolve LOTO-sensitive work first.'
-                : 'All records remain local to the tablet and are ready for PDF generation or email handoff.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                : 'All records remain ready for PDF generation, technician signoff, and share handoff.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFB7C4D5)),
           ),
         ],
       ),
@@ -281,7 +285,7 @@ class _MetricsSection extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
-            mainAxisExtent: 154,
+            mainAxisExtent: 192,
             crossAxisSpacing: 14,
             mainAxisSpacing: 14,
           ),
@@ -294,10 +298,11 @@ class _MetricsSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          width: 48,
-                          height: 48,
+                          width: 44,
+                          height: 44,
                           decoration: BoxDecoration(
                             color: metric.color.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(16),
@@ -305,24 +310,39 @@ class _MetricsSection extends StatelessWidget {
                           child: Icon(metric.icon, color: metric.color),
                         ),
                         const Spacer(),
-                        Text(
-                          metric.value,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.displaySmall?.copyWith(fontSize: 34),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              metric.label.toUpperCase(),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              metric.value,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.displaySmall?.copyWith(fontSize: 34),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                     const Spacer(),
                     Text(
-                      metric.label,
+                      metric.subtitle,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      metric.subtitle,
+                      metric.label,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -565,14 +585,13 @@ class _MiniStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CtsPalette.surfaceAlt,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: CtsPalette.lineSoft),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: CtsPalette.orange),
+          Icon(icon, size: 16, color: CtsPalette.secondaryBlue),
           const SizedBox(width: 8),
           Text(
             '$value $label',
@@ -657,9 +676,8 @@ class _ActionButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: CtsPalette.surfaceAlt,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: CtsPalette.lineSoft),
         ),
         child: Row(
           children: [
@@ -667,10 +685,10 @@ class _ActionButton extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: CtsPalette.orange.withValues(alpha: 0.12),
+                color: CtsPalette.secondaryBlue.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: CtsPalette.orange),
+              child: Icon(icon, color: CtsPalette.secondaryBlue),
             ),
             const SizedBox(width: 14),
             Expanded(

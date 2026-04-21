@@ -46,6 +46,60 @@ class InspectionDetailScreen extends ConsumerWidget {
                 context.go('/inspection/${duplicate.id}/edit');
               }
             },
+            onDelete: () async {
+              final bool? confirmed = await showDialog<bool>(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Delete inspection?'),
+                    content: const Text(
+                      'This removes the local inspection, photos, signature, and generated PDF from this device.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: CtsPalette.danger,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (confirmed != true) {
+                return;
+              }
+              if (!context.mounted) {
+                return;
+              }
+              final messenger = ScaffoldMessenger.of(context);
+              final router = GoRouter.of(context);
+              try {
+                await ref
+                    .read(workspaceProvider)
+                    .deleteInspectionById(inspection.id);
+                if (!context.mounted) {
+                  return;
+                }
+                router.go('/inspections');
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Inspection deleted.')),
+                );
+              } catch (error) {
+                if (!context.mounted) {
+                  return;
+                }
+                messenger.showSnackBar(
+                  SnackBar(content: Text(error.toString())),
+                );
+              }
+            },
           ),
           const SizedBox(height: 18),
           LayoutBuilder(
@@ -164,11 +218,13 @@ class _DetailHeader extends StatelessWidget {
     required this.inspection,
     required this.onEdit,
     required this.onDuplicate,
+    required this.onDelete,
   });
 
   final InspectionSummary inspection;
   final VoidCallback onEdit;
   final VoidCallback onDuplicate;
+  final Future<void> Function() onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -254,6 +310,16 @@ class _DetailHeader extends StatelessWidget {
                 onPressed: onDuplicate,
                 icon: const Icon(Icons.copy_outlined),
                 label: const Text('Duplicate'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                key: const Key('delete_inspection_button'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: CtsPalette.danger,
+                ),
+                onPressed: () => onDelete(),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Delete'),
               ),
             ],
           ),

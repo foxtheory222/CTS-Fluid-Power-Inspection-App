@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -100,10 +101,25 @@ class CtsFluidPowerInspectionApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'CTS Fluid Power Inspection App',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const _CtsScrollBehavior(),
       theme: buildCtsTheme(Brightness.light),
       darkTheme: buildCtsTheme(Brightness.dark),
       themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }
+}
+
+class _CtsScrollBehavior extends MaterialScrollBehavior {
+  const _CtsScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => <PointerDeviceKind>{
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.invertedStylus,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.unknown,
+  };
 }

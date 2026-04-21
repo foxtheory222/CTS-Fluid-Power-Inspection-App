@@ -74,7 +74,8 @@ void main() {
     await tester.pumpWidget(buildApp(home: const DashboardScreen()));
     await tester.pump(const Duration(seconds: 2));
 
-    expect(find.text('Dashboard'), findsWidgets);
+    expect(find.text('Inspection Operations'), findsWidgets);
+    expect(find.text('Fluid Power Inspection Reports'), findsWidgets);
     expect(find.text('No inspections yet'), findsWidgets);
     expect(find.text('Tap New Inspection to start.'), findsWidgets);
   });

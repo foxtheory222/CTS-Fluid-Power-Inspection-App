@@ -165,13 +165,21 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
         .watch(workspaceProvider)
         .validate(inspection)
         .issues;
-    final bool wide = MediaQuery.sizeOf(context).width >= 1250;
+    final Size screenSize = MediaQuery.sizeOf(context);
+    final bool showNavigator = screenSize.width >= 1180;
+    final bool showUtilityRail = screenSize.width >= 1520;
+    final Widget utilityColumn = _buildUtilityColumn(
+      context,
+      inspection,
+      issues,
+    );
 
     final Widget content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeaderBanner(context, inspection),
         const SizedBox(height: 18),
+        if (!showUtilityRail) ...[utilityColumn, const SizedBox(height: 18)],
         _buildJobAssetSection(context, inspection),
         const SizedBox(height: 18),
         _buildComponentSection(context, inspection),
@@ -194,9 +202,9 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (wide) ...[
+        if (showNavigator) ...[
           SizedBox(
-            width: 250,
+            width: 242,
             child: _buildSectionNavigator(inspection, issues),
           ),
           const SizedBox(width: 18),
@@ -207,15 +215,20 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
             child: content,
           ),
         ),
+        if (showUtilityRail) ...[
+          const SizedBox(width: 18),
+          SizedBox(width: 320, child: utilityColumn),
+        ],
       ],
     );
   }
 
   Widget _buildHeaderBanner(BuildContext context, InspectionRecord inspection) {
     return SectionCard(
-      title: widget.inspectionId == null ? 'New Inspection' : 'Edit Inspection',
+      title: 'Inspection Record',
       subtitle:
-          'Document ${inspection.documentNumber} • ${DateTimeUtils.displayDateTime(inspection.inspectionDateTime)}',
+          'Combined Technical Services • ${DateTimeUtils.displayDateTime(inspection.inspectionDateTime)}',
+      topAccent: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -238,31 +251,90 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton.icon(
-                key: const Key('save_draft_button'),
-                onPressed: _saving
-                    ? null
-                    : () => _persistInspection(showMessage: true),
-                icon: const Icon(Icons.save_outlined),
-                label: Text(_saving ? 'Saving...' : 'Save Draft'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () =>
-                    _jumpToSection(InspectionSectionKeys.reviewCompletion),
-                icon: const Icon(Icons.rate_review_outlined),
-                label: const Text('Jump to Review'),
-              ),
-              if (widget.inspectionId != null)
-                OutlinedButton.icon(
-                  onPressed: () => context.go('/inspection/${inspection.id}'),
-                  icon: const Icon(Icons.visibility_outlined),
-                  label: const Text('View Details'),
-                ),
-            ],
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: CtsPalette.surfaceAlt,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 980;
+                final metadata = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.inspectionId == null
+                          ? 'New report'
+                          : 'Editing report',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        fontSize: compact ? 28 : 32,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Document ${inspection.documentNumber}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: CtsPalette.steel,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Use the section rail to move through the inspection and keep report output ready for signoff.',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                );
+
+                final actions = Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FilledButton.icon(
+                      key: const Key('save_draft_button'),
+                      onPressed: _saving
+                          ? null
+                          : () => _persistInspection(showMessage: true),
+                      icon: const Icon(Icons.save_outlined),
+                      label: Text(_saving ? 'Saving...' : 'Save Draft'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _jumpToSection(
+                        InspectionSectionKeys.reviewCompletion,
+                      ),
+                      icon: const Icon(Icons.rate_review_outlined),
+                      label: const Text('Jump to Review'),
+                    ),
+                    if (widget.inspectionId != null)
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            context.go('/inspection/${inspection.id}'),
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: const Text('View Details'),
+                      ),
+                  ],
+                );
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [metadata, const SizedBox(height: 16), actions],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: metadata),
+                    const SizedBox(width: 18),
+                    SizedBox(width: 360, child: actions),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -274,8 +346,9 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
     List<ValidationIssue> issues,
   ) {
     return SectionCard(
+      topAccent: true,
       title: 'Sections',
-      subtitle: 'Tap to move through the fixed inspection workflow.',
+      subtitle: 'Inspection chapters and live progress.',
       child: Column(
         children: [
           for (final SectionDescriptor descriptor
@@ -288,6 +361,255 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
             if (descriptor != InspectionSectionKeys.ordered.last)
               const SizedBox(height: 8),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUtilityColumn(
+    BuildContext context,
+    InspectionRecord inspection,
+    List<ValidationIssue> issues,
+  ) {
+    final bool hasSignature =
+        _signatureController.isNotEmpty || _existingSignaturePath != null;
+    final Map<String, InspectionSectionProgress> progressByKey = {
+      for (final InspectionSectionProgress section in inspection.sections)
+        section.sectionKey: section,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionCard(
+          title: 'Inspection status',
+          subtitle: 'Live summary for this report.',
+          topAccent: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _UtilityStatCard(
+                    label: 'Flagged',
+                    value: inspection.flaggedItemCount.toString(),
+                    icon: Icons.warning_amber_rounded,
+                    color: inspection.flaggedItemCount == 0
+                        ? CtsPalette.success
+                        : CtsPalette.warning,
+                  ),
+                  _UtilityStatCard(
+                    label: 'Critical',
+                    value: inspection.criticalCount.toString(),
+                    icon: Icons.report_problem_outlined,
+                    color: inspection.criticalCount == 0
+                        ? CtsPalette.secondaryBlue
+                        : CtsPalette.danger,
+                  ),
+                  _UtilityStatCard(
+                    label: 'Photos',
+                    value: inspection.photoCount.toString(),
+                    icon: Icons.photo_library_outlined,
+                    color: CtsPalette.secondaryBlue,
+                  ),
+                  _UtilityStatCard(
+                    label: 'Actions',
+                    value: inspection.actionItemCount.toString(),
+                    icon: Icons.assignment_turned_in_outlined,
+                    color: CtsPalette.steel,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: CtsPalette.navy,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      inspection.status.label,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFF96CCFF),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      inspection.documentNumber,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      issues.isEmpty
+                          ? 'Completion checks are clear.'
+                          : '${issues.length} completion issue${issues.length == 1 ? '' : 's'} still need attention.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFFB7C4D5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (inspection.hasCriticalItems) ...[
+          const SizedBox(height: 18),
+          SectionCard(
+            title: 'Critical flag',
+            subtitle: 'Immediate follow-up is required.',
+            topAccent: true,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: CtsPalette.danger.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppConstants.lotOWarning,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: CtsPalette.danger,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  StatusBadge(
+                    label: inspection.criticalAcknowledged
+                        ? 'Acknowledgement recorded'
+                        : 'Acknowledgement required',
+                    color: inspection.criticalAcknowledged
+                        ? CtsPalette.success
+                        : CtsPalette.danger,
+                    icon: inspection.criticalAcknowledged
+                        ? Icons.verified_outlined
+                        : Icons.error_outline,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+        SectionCard(
+          title: 'Section progress',
+          subtitle: 'Review completion state across the inspection.',
+          child: Column(
+            children: [
+              for (final SectionDescriptor descriptor
+                  in InspectionSectionKeys.ordered) ...[
+                _UtilitySectionRow(
+                  title: descriptor.title,
+                  subtitle: _sectionSubtitle(
+                    descriptor.key,
+                    inspection,
+                    issues,
+                  ),
+                  state:
+                      progressByKey[descriptor.key]?.completionState ??
+                      SectionCompletionState.notStarted,
+                ),
+                if (descriptor != InspectionSectionKeys.ordered.last)
+                  const SizedBox(height: 10),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        SectionCard(
+          title: 'Report output',
+          subtitle: 'Signoff, PDF, and share readiness.',
+          child: Column(
+            children: [
+              _buildUtilityOutputRow(
+                icon: Icons.draw_outlined,
+                label: 'Signature',
+                value: hasSignature ? 'Captured' : 'Pending',
+                color: hasSignature ? CtsPalette.success : CtsPalette.warning,
+              ),
+              const SizedBox(height: 10),
+              _buildUtilityOutputRow(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'PDF',
+                value: inspection.generatedPdfPath != null
+                    ? 'Generated'
+                    : 'Not generated',
+                color: inspection.generatedPdfPath != null
+                    ? CtsPalette.secondaryBlue
+                    : CtsPalette.slate,
+              ),
+              const SizedBox(height: 10),
+              _buildUtilityOutputRow(
+                icon: Icons.share_outlined,
+                label: 'Share status',
+                value: inspection.emailedAt != null ? 'Emailed' : 'Not sent',
+                color: inspection.emailedAt != null
+                    ? CtsPalette.success
+                    : CtsPalette.slate,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUtilityOutputRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: CtsPalette.surfaceAlt,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -2048,6 +2370,132 @@ class _SectionNavTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _UtilityStatCard extends StatelessWidget {
+  const _UtilityStatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 126,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: CtsPalette.surfaceAlt,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontSize: 28),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UtilitySectionRow extends StatelessWidget {
+  const _UtilitySectionRow({
+    required this.title,
+    required this.subtitle,
+    required this.state,
+  });
+
+  final String title;
+  final String subtitle;
+  final SectionCompletionState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color tint = switch (state) {
+      SectionCompletionState.complete => CtsPalette.success,
+      SectionCompletionState.inProgress => CtsPalette.secondaryBlue,
+      SectionCompletionState.blocked => CtsPalette.danger,
+      SectionCompletionState.notStarted => CtsPalette.slate,
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: CtsPalette.surfaceAlt,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: tint.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  state.label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: tint),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

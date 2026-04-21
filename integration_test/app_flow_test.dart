@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:cross_file/cross_file.dart';
@@ -10,10 +11,10 @@ import 'package:cts_fluid_power_inspection_app/services/document_number_service.
 import 'package:cts_fluid_power_inspection_app/services/email_service.dart';
 import 'package:cts_fluid_power_inspection_app/services/photo_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
@@ -25,16 +26,10 @@ void main() {
     'real app tablet flow creates completes shares searches and duplicates inspections',
     (WidgetTester tester) async {
       final Directory tempDir = await getTemporaryDirectory();
-      final ByteData photoBytes = await rootBundle.load(
-        'assets/demo/sample_photo_1.jpg',
-      );
       final File samplePhoto = File(
         p.join(tempDir.path, 'integration_photo.jpg'),
       );
-      await samplePhoto.writeAsBytes(
-        photoBytes.buffer.asUint8List(),
-        flush: true,
-      );
+      await samplePhoto.writeAsBytes(_buildTestJpegBytes(), flush: true);
 
       final AppDatabase database = AppDatabase();
       final InspectionRepository repository = InspectionRepository(
@@ -72,7 +67,7 @@ void main() {
 
       expect(find.byKey(const Key('new_inspection_button')), findsOneWidget);
       await tester.tap(find.byKey(const Key('new_inspection_button')));
-      await tester.pump(const Duration(seconds: 1));
+      await _pumpUntilVisible(tester, find.byKey(const Key('customer_field')));
 
       await tester.enterText(
         find.byKey(const Key('customer_field')),
@@ -107,7 +102,7 @@ void main() {
         find.byKey(const Key('overview_gallery_button')),
       );
       await tester.tap(find.byKey(const Key('overview_gallery_button')));
-      await tester.pumpAndSettle();
+      await _pumpForUiWork(tester);
 
       await _selectDropdown(
         tester,
@@ -134,7 +129,7 @@ void main() {
         find.byKey(const Key('fluid_level_gallery_button')),
       );
       await tester.tap(find.byKey(const Key('fluid_level_gallery_button')));
-      await tester.pumpAndSettle();
+      await _pumpForUiWork(tester);
 
       final criticalFinder = find.descendant(
         of: find.byKey(const Key('tank_integrity_condition_selector')),
@@ -151,7 +146,7 @@ void main() {
         find.byKey(const Key('tank_integrity_gallery_button')),
       );
       await tester.tap(find.byKey(const Key('tank_integrity_gallery_button')));
-      await tester.pumpAndSettle();
+      await _pumpForUiWork(tester);
       await _selectDropdown(
         tester,
         find.byKey(const Key('tank_cleanout_performed_field')),
@@ -169,7 +164,7 @@ void main() {
         find.byKey(const Key('add_hose_entry_button')),
       );
       await tester.tap(find.byKey(const Key('add_hose_entry_button')));
-      await tester.pumpAndSettle();
+      await _pumpForUiWork(tester);
       await tester.enterText(
         _fieldByKeySuffix('_name').last,
         'Return hose at manifold',
@@ -280,7 +275,7 @@ void main() {
         find.byKey(const Key('complete_inspection_button')),
       );
       await tester.tap(find.byKey(const Key('complete_inspection_button')));
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      await _pumpForUiWork(tester, duration: const Duration(seconds: 2));
 
       var inspections = await repository.allInspections();
       expect(inspections, hasLength(1));
@@ -289,7 +284,11 @@ void main() {
 
       await tester.ensureVisible(find.byKey(const Key('generate_pdf_button')));
       await tester.tap(find.byKey(const Key('generate_pdf_button')));
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      await _pumpForUiWork(tester, duration: const Duration(seconds: 2));
+      await _pumpUntilAsyncCondition(tester, () async {
+        final records = await repository.allInspections();
+        return (records.single.generatedPdfPath ?? '').isNotEmpty;
+      });
 
       inspections = await repository.allInspections();
       final generated = inspections.single;
@@ -300,15 +299,23 @@ void main() {
 
       await tester.ensureVisible(find.byKey(const Key('share_pdf_button')));
       await tester.tap(find.byKey(const Key('share_pdf_button')));
-      await tester.pumpAndSettle();
+      await _pumpForUiWork(tester);
+      await _pumpUntilVisible(tester, find.text('Mark emailed'));
       await tester.tap(find.text('Mark emailed'));
-      await tester.pumpAndSettle();
+      await _pumpForUiWork(tester);
+      await _pumpUntilAsyncCondition(tester, () async {
+        final records = await repository.allInspections();
+        return records.single.status == InspectionStatus.emailed;
+      });
 
       inspections = await repository.allInspections();
       expect(inspections.single.status, InspectionStatus.emailed);
 
       await tester.tap(find.text('Inspections').last);
-      await tester.pump(const Duration(seconds: 1));
+      await _pumpUntilVisible(
+        tester,
+        find.byKey(const Key('inspection_search_field')),
+      );
       await tester.enterText(
         find.byKey(const Key('inspection_search_field')),
         'WO-7788',
@@ -317,9 +324,9 @@ void main() {
       expect(find.text('WO-7788'), findsWidgets);
 
       await tester.tap(find.text('North Basin Processing').first);
-      await tester.pump(const Duration(seconds: 1));
+      await _pumpUntilVisible(tester, find.text('Duplicate'));
       await tester.tap(find.text('Duplicate'));
-      await tester.pump(const Duration(seconds: 1));
+      await _pumpForUiWork(tester, duration: const Duration(seconds: 2));
 
       inspections = await repository.allInspections();
       expect(inspections, hasLength(2));
@@ -335,6 +342,46 @@ void main() {
       expect(reloaded, hasLength(2));
     },
   );
+}
+
+Uint8List _buildTestJpegBytes() {
+  final image = img.Image(width: 96, height: 96);
+  for (var y = 0; y < image.height; y++) {
+    for (var x = 0; x < image.width; x++) {
+      image.setPixelRgba(x, y, 10 + (x * 2), 70 + y, 140 + (x ~/ 2), 255);
+    }
+  }
+  return Uint8List.fromList(img.encodeJpg(image, quality: 90));
+}
+
+Future<void> _pumpUntilVisible(
+  WidgetTester tester,
+  Finder finder, {
+  Duration step = const Duration(milliseconds: 250),
+  int maxSteps = 40,
+}) async {
+  for (var index = 0; index < maxSteps; index++) {
+    await tester.pump(step);
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+  expect(finder, findsWidgets);
+}
+
+Future<void> _pumpUntilAsyncCondition(
+  WidgetTester tester,
+  Future<bool> Function() condition, {
+  Duration step = const Duration(milliseconds: 250),
+  int maxSteps = 40,
+}) async {
+  for (var index = 0; index < maxSteps; index++) {
+    await tester.pump(step);
+    if (await condition()) {
+      return;
+    }
+  }
+  expect(await condition(), isTrue);
 }
 
 Finder _fieldByKeySuffix(String suffix) {
@@ -355,7 +402,14 @@ Future<void> _selectDropdown(
 ) async {
   await tester.ensureVisible(finder);
   await tester.tap(finder);
-  await tester.pumpAndSettle();
+  await _pumpForUiWork(tester);
   await tester.tap(find.text(optionText).last);
-  await tester.pumpAndSettle();
+  await _pumpForUiWork(tester);
+}
+
+Future<void> _pumpForUiWork(
+  WidgetTester tester, {
+  Duration duration = const Duration(milliseconds: 700),
+}) async {
+  await tester.pump(duration);
 }

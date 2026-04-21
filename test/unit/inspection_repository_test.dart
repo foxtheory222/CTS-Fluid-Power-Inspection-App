@@ -155,6 +155,28 @@ void main() {
     },
   );
 
+  test('deleteInspection removes the persisted record', () async {
+    final inspection = buildInspection(
+      id: 'delete-me',
+      documentNumber: '20260420-0005',
+      status: InspectionStatus.inProgress,
+      customer: 'CTS Johannesburg',
+      workOrderNumber: 'WO-DEL-1',
+    );
+    fillRequiredResponses(inspection);
+    await repository.saveInspection(inspection);
+
+    expect(await repository.getInspection('delete-me'), isNotNull);
+
+    await repository.deleteInspection('delete-me');
+
+    expect(await repository.getInspection('delete-me'), isNull);
+    expect(
+      await repository.search(const InspectionSearchQuery(term: 'WO-DEL-1')),
+      isEmpty,
+    );
+  });
+
   test('validation helper detects a complete inspection', () {
     final inspection = buildInspection(
       id: 'validate',

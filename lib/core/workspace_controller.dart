@@ -261,6 +261,18 @@ class AppWorkspaceController extends ChangeNotifier {
     return saved.clone();
   }
 
+  Future<void> deleteInspectionById(String id) async {
+    final InspectionRecord? local = recordById(id);
+    final InspectionRecord? loaded =
+        local ?? await _repository.getInspection(id);
+    await _repository.deleteInspection(id);
+    _records.removeWhere((InspectionRecord record) => record.id == id);
+    if (loaded != null) {
+      await _deleteInspectionFiles(loaded);
+    }
+    notifyListeners();
+  }
+
   ValidationResult validate(InspectionRecord inspection) {
     return InspectionValidator.validateForCompletion(inspection);
   }
@@ -509,5 +521,28 @@ class AppWorkspaceController extends ChangeNotifier {
           orElse: () => null,
         );
     return response?.itemLabel ?? itemKey.replaceAll('_', ' ');
+  }
+
+  Future<void> _deleteInspectionFiles(InspectionRecord inspection) async {
+    final Directory inspectionDirectory = await FileUtils.inspectionDirectory(
+      inspection.id,
+    );
+    if (await inspectionDirectory.exists()) {
+      await inspectionDirectory.delete(recursive: true);
+    }
+
+    final Set<String> looseFiles = <String>{
+      if ((inspection.generatedPdfPath ?? '').trim().isNotEmpty)
+        inspection.generatedPdfPath!,
+      if ((inspection.signatureFilePath ?? '').trim().isNotEmpty)
+        inspection.signatureFilePath!,
+    };
+
+    for (final String path in looseFiles) {
+      final File file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
   }
 }

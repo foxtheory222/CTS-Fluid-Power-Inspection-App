@@ -1,35 +1,35 @@
 import 'package:flutter/material.dart';
 
 class CtsPalette {
-  static const navy = Color(0xFF0C2E57);
-  static const navyAlt = Color(0xFF103A6A);
-  static const ink = Color(0xFF16395F);
-  static const slate = Color(0xFF5C7390);
-  static const slateMuted = Color(0xFF7B8FA8);
-  static const steel = Color(0xFF4D6D95);
-  static const secondaryBlue = Color(0xFF1A97D6);
-  static const secondaryBlueSoft = Color(0xFFD9EFFA);
-  static const secondaryBlueMuted = Color(0xFF157EB4);
+  static const navy = Color(0xFF002147);
+  static const navyAlt = Color(0xFF000A1E);
+  static const ink = Color(0xFF191C1D);
+  static const slate = Color(0xFF44474E);
+  static const slateMuted = Color(0xFF708AB5);
+  static const steel = Color(0xFF206393);
+  static const secondaryBlue = Color(0xFF007FFF);
+  static const secondaryBlueSoft = Color(0xFFD8EAFF);
+  static const secondaryBlueMuted = Color(0xFF035584);
   static const orange = secondaryBlue;
   static const orangeSoft = secondaryBlueSoft;
   static const orangeMuted = secondaryBlueMuted;
-  static const cloud = Color(0xFFF3F7FA);
-  static const mist = Color(0xFFE6EEF5);
+  static const cloud = Color(0xFFF8F9FA);
+  static const mist = Color(0xFFF3F4F5);
   static const surface = Colors.white;
-  static const surfaceAlt = Color(0xFFF8F9FB);
-  static const line = Color(0xFFD5DEE8);
-  static const lineSoft = Color(0xFFE6ECF2);
+  static const surfaceAlt = Color(0xFFF3F4F5);
+  static const line = Color(0xFFC4C6CF);
+  static const lineSoft = Color(0xFFE1E3E4);
   static const success = Color(0xFF218A63);
-  static const warning = Color(0xFFB67A1A);
-  static const danger = Color(0xFFC74343);
-  static const info = Color(0xFF2478B5);
+  static const warning = Color(0xFFC98208);
+  static const danger = Color(0xFFBA1A1A);
+  static const info = Color(0xFF206393);
 }
 
 ThemeData buildCtsTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
   final scheme = dark
       ? const ColorScheme.dark(
-          primary: CtsPalette.secondaryBlue,
+          primary: CtsPalette.navy,
           onPrimary: Colors.white,
           secondary: CtsPalette.steel,
           onSecondary: Colors.white,
@@ -37,7 +37,7 @@ ThemeData buildCtsTheme(Brightness brightness) {
           onError: Colors.white,
           surface: CtsPalette.navy,
           onSurface: Colors.white,
-          tertiary: CtsPalette.info,
+          tertiary: CtsPalette.secondaryBlue,
           onTertiary: Colors.white,
         ).copyWith(
           surfaceContainerHighest: const Color(0xFF16263E),
@@ -47,7 +47,7 @@ ThemeData buildCtsTheme(Brightness brightness) {
           surfaceTint: CtsPalette.secondaryBlue,
         )
       : const ColorScheme.light(
-          primary: CtsPalette.secondaryBlue,
+          primary: CtsPalette.navy,
           onPrimary: Colors.white,
           secondary: CtsPalette.steel,
           onSecondary: Colors.white,
@@ -55,10 +55,10 @@ ThemeData buildCtsTheme(Brightness brightness) {
           onError: Colors.white,
           surface: CtsPalette.surface,
           onSurface: CtsPalette.ink,
-          tertiary: CtsPalette.info,
+          tertiary: CtsPalette.secondaryBlue,
           onTertiary: Colors.white,
         ).copyWith(
-          surfaceContainerHighest: CtsPalette.mist,
+          surfaceContainerHighest: const Color(0xFFE7E8E9),
           onSurfaceVariant: CtsPalette.slate,
           outline: CtsPalette.line,
           outlineVariant: CtsPalette.lineSoft,
@@ -67,64 +67,67 @@ ThemeData buildCtsTheme(Brightness brightness) {
 
   const baseTextTheme = TextTheme(
     displayLarge: TextStyle(
-      fontFamily: 'PublicSans',
+      fontFamily: 'WorkSans',
       fontWeight: FontWeight.w700,
       letterSpacing: -1.2,
     ),
     displayMedium: TextStyle(
-      fontFamily: 'PublicSans',
+      fontFamily: 'WorkSans',
       fontWeight: FontWeight.w700,
       letterSpacing: -0.8,
     ),
     displaySmall: TextStyle(
-      fontFamily: 'PublicSans',
+      fontFamily: 'WorkSans',
       fontWeight: FontWeight.w700,
       letterSpacing: -0.6,
     ),
     headlineLarge: TextStyle(
-      fontFamily: 'PublicSans',
+      fontFamily: 'WorkSans',
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
     ),
     headlineMedium: TextStyle(
-      fontFamily: 'PublicSans',
+      fontFamily: 'WorkSans',
       fontWeight: FontWeight.w700,
       letterSpacing: -0.4,
     ),
     headlineSmall: TextStyle(
-      fontFamily: 'PublicSans',
+      fontFamily: 'WorkSans',
       fontWeight: FontWeight.w700,
     ),
-    titleLarge: TextStyle(
-      fontFamily: 'PublicSans',
-      fontWeight: FontWeight.w700,
-    ),
-    titleMedium: TextStyle(
-      fontFamily: 'PublicSans',
-      fontWeight: FontWeight.w600,
-    ),
-    titleSmall: TextStyle(
-      fontFamily: 'PublicSans',
-      fontWeight: FontWeight.w600,
-    ),
+    titleLarge: TextStyle(fontFamily: 'WorkSans', fontWeight: FontWeight.w700),
+    titleMedium: TextStyle(fontFamily: 'WorkSans', fontWeight: FontWeight.w600),
+    titleSmall: TextStyle(fontFamily: 'WorkSans', fontWeight: FontWeight.w600),
     bodyLarge: TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'PublicSans',
       fontWeight: FontWeight.w400,
       height: 1.3,
     ),
     bodyMedium: TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'PublicSans',
       fontWeight: FontWeight.w400,
       height: 1.3,
     ),
     bodySmall: TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'PublicSans',
       fontWeight: FontWeight.w400,
       height: 1.25,
     ),
-    labelLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
-    labelMedium: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
-    labelSmall: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
+    labelLarge: TextStyle(
+      fontFamily: 'PublicSans',
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.2,
+    ),
+    labelMedium: TextStyle(
+      fontFamily: 'PublicSans',
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.2,
+    ),
+    labelSmall: TextStyle(
+      fontFamily: 'PublicSans',
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.25,
+    ),
   );
 
   return ThemeData(
@@ -132,7 +135,7 @@ ThemeData buildCtsTheme(Brightness brightness) {
     brightness: brightness,
     colorScheme: scheme,
     scaffoldBackgroundColor: dark ? CtsPalette.navy : CtsPalette.cloud,
-    fontFamily: 'Inter',
+    fontFamily: 'PublicSans',
     textTheme: baseTextTheme.apply(
       bodyColor: scheme.onSurface,
       displayColor: scheme.onSurface,
@@ -149,37 +152,34 @@ ThemeData buildCtsTheme(Brightness brightness) {
     ),
     cardTheme: CardThemeData(
       color: dark ? const Color(0xFF12223A) : Colors.white,
-      elevation: dark ? 0 : 2,
-      shadowColor: Colors.black.withValues(alpha: dark ? 0.0 : 0.05),
+      elevation: dark ? 0 : 1,
+      shadowColor: Colors.black.withValues(alpha: dark ? 0.0 : 0.04),
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(
-          color: dark
-              ? scheme.outlineVariant
-              : Colors.white.withValues(alpha: 0.9),
-        ),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       margin: EdgeInsets.zero,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: dark ? const Color(0xFF16263E) : Colors.white,
+      fillColor: dark ? const Color(0xFF16263E) : CtsPalette.mist,
       labelStyle: TextStyle(color: scheme.onSurfaceVariant),
       hintStyle: TextStyle(
         color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: scheme.outlineVariant),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0),
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: scheme.outlineVariant),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.3),
+        ),
       ),
       focusedBorder: const OutlineInputBorder(
         borderRadius: BorderRadius.all(Radius.circular(18)),
-        borderSide: BorderSide(color: CtsPalette.orange, width: 1.8),
+        borderSide: BorderSide(color: CtsPalette.navy, width: 1.6),
       ),
       errorBorder: const OutlineInputBorder(
         borderRadius: BorderRadius.all(Radius.circular(18)),
@@ -193,12 +193,12 @@ ThemeData buildCtsTheme(Brightness brightness) {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: CtsPalette.secondaryBlue,
+        backgroundColor: CtsPalette.navy,
         foregroundColor: Colors.white,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         textStyle: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'PublicSans',
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),
@@ -207,12 +207,12 @@ ThemeData buildCtsTheme(Brightness brightness) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: CtsPalette.secondaryBlue,
+        backgroundColor: CtsPalette.navy,
         foregroundColor: Colors.white,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         textStyle: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'PublicSans',
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),
@@ -226,7 +226,7 @@ ThemeData buildCtsTheme(Brightness brightness) {
         side: BorderSide(color: dark ? scheme.outlineVariant : CtsPalette.line),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         textStyle: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'PublicSans',
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),
@@ -243,12 +243,12 @@ ThemeData buildCtsTheme(Brightness brightness) {
         size: 20,
       ),
       selectedLabelTextStyle: const TextStyle(
-        fontFamily: 'Inter',
+        fontFamily: 'PublicSans',
         fontWeight: FontWeight.w700,
         color: Colors.white,
       ),
       unselectedLabelTextStyle: const TextStyle(
-        fontFamily: 'Inter',
+        fontFamily: 'PublicSans',
         fontWeight: FontWeight.w600,
         color: Color(0xFF90A5BD),
       ),

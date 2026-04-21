@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:cts_fluid_power_inspection_app/features/pdf_report/pdf_report_models.dart';
 import 'package:cts_fluid_power_inspection_app/services/pdf_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -14,8 +15,8 @@ void main() {
   late Uint8List signatureBytes;
 
   setUpAll(() async {
-    photoOne = await File('assets/demo/sample_photo_1.jpg').readAsBytes();
-    photoTwo = await File('assets/demo/sample_photo_2.jpg').readAsBytes();
+    photoOne = _buildTestJpegBytes(0xFF1B4D8A);
+    photoTwo = _buildTestJpegBytes(0xFF2B9AE2);
     signatureBytes = photoOne;
   });
 
@@ -232,17 +233,37 @@ void main() {
     );
   });
 
-  test('generateInspectionReportFile writes a QA sample pdf to build output', () async {
-    final service = PdfService(compress: false);
-    final outputDirectory = Directory('build/sample_reports');
-    await outputDirectory.create(recursive: true);
+  test(
+    'generateInspectionReportFile writes a QA pdf to build output',
+    () async {
+      final service = PdfService(compress: false);
+      final outputDirectory = Directory('build/qa_reports');
+      await outputDirectory.create(recursive: true);
 
-    final file = await service.generateInspectionReportFile(
-      buildReport(),
-      outputDirectory: outputDirectory,
-    );
+      final file = await service.generateInspectionReportFile(
+        buildReport(),
+        outputDirectory: outputDirectory,
+      );
 
-    expect(await file.exists(), isTrue);
-    expect(await file.length(), greaterThan(1000));
-  });
+      expect(await file.exists(), isTrue);
+      expect(await file.length(), greaterThan(1000));
+    },
+  );
+}
+
+Uint8List _buildTestJpegBytes(int colorValue) {
+  final image = img.Image(width: 80, height: 80);
+  final primary = img.ColorUint32.rgba(
+    (colorValue >> 16) & 0xFF,
+    (colorValue >> 8) & 0xFF,
+    colorValue & 0xFF,
+    255,
+  );
+  final secondary = img.ColorUint32.rgba(255, 255, 255, 255);
+  for (var y = 0; y < image.height; y++) {
+    for (var x = 0; x < image.width; x++) {
+      image.setPixel(x, y, x.isEven ? primary : secondary);
+    }
+  }
+  return Uint8List.fromList(img.encodeJpg(image, quality: 90));
 }

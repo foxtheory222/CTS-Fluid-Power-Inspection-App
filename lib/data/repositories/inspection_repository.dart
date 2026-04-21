@@ -156,6 +156,15 @@ class InspectionRepository {
     return _rowToInspection(rows.first);
   }
 
+  Future<void> deleteInspection(String inspectionId) async {
+    final Database db = await _database.open();
+    await db.delete(
+      'inspections',
+      where: 'id = ?',
+      whereArgs: <Object?>[inspectionId],
+    );
+  }
+
   Future<List<InspectionRecord>> search(InspectionSearchQuery query) async {
     final Database db = await _database.open();
     final StringBuffer whereBuffer = StringBuffer('1 = 1');

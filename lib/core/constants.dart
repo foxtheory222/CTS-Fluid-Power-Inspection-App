@@ -5,8 +5,6 @@ class AppConstants {
   static const String brandCompanyName = 'Combined Technical Services';
   static const String reportTitle = 'CTS Fluid Power Inspection Report';
   static const String placeholderLogoAsset = 'assets/logo/cts_logo.png';
-  static const String samplePhotoAssetOne = 'assets/demo/sample_photo_1.jpg';
-  static const String samplePhotoAssetTwo = 'assets/demo/sample_photo_2.jpg';
   static const int maxPhotosPerInspectionItem = 10;
   static const int recentInspectionLimit = 10;
   static const int recentRecipientLimit = 8;
@@ -20,11 +18,6 @@ class AppConstants {
   static const String lotOWarning =
       'Critical / Out of Service condition identified. Lockout/Tagout required. '
       'Unit must not be operated until corrective action is complete.';
-
-  static const List<String> samplePhotoAssets = <String>[
-    samplePhotoAssetOne,
-    samplePhotoAssetTwo,
-  ];
 }
 
 class SectionDescriptor {

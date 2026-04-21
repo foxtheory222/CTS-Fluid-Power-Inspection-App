@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -11,9 +10,9 @@ import '../core/constants.dart';
 import '../core/file_utils.dart';
 import '../data/models/inspection_models.dart';
 
-enum PhotoInputSource { camera, gallery, sampleOne, sampleTwo }
+enum PhotoInputSource { camera, gallery }
 
-enum ManagedPhotoSource { camera, gallery, sampleAsset, imported }
+enum ManagedPhotoSource { camera, gallery, imported }
 
 @immutable
 class ManagedInspectionPhoto {
@@ -205,7 +204,6 @@ class PhotoService {
   PhotoService({
     InspectionPhotoPicker? photoPicker,
     PhotoDirectoryProvider? documentsDirectoryProvider,
-    AssetBundle? assetBundle,
     int maxPhotosPerItem = AppConstants.maxPhotosPerInspectionItem,
     ImagePicker? imagePicker,
     Uuid? uuid,
@@ -214,13 +212,11 @@ class PhotoService {
            ImagePickerInspectionPhotoPicker(imagePicker: imagePicker),
        _documentsDirectoryProvider =
            documentsDirectoryProvider ?? getApplicationDocumentsDirectory,
-       _assetBundle = assetBundle ?? rootBundle,
        _maxPhotosPerItem = maxPhotosPerItem,
        _uuid = uuid ?? const Uuid();
 
   final InspectionPhotoPicker _photoPicker;
   final PhotoDirectoryProvider _documentsDirectoryProvider;
-  final AssetBundle _assetBundle;
   final int _maxPhotosPerItem;
   final Uuid _uuid;
 
@@ -298,35 +294,6 @@ class PhotoService {
       skippedCount: selected.length - accepted.length,
       truncated: selected.length > accepted.length,
     );
-  }
-
-  Future<ManagedInspectionPhoto> addSampleAssetPhoto({
-    required String inspectionId,
-    required String sectionKey,
-    required String itemKey,
-    required String assetPath,
-    required int currentPhotoCount,
-    String caption = '',
-    int sortOrder = 0,
-  }) async {
-    _assertPhotoSlotsAvailable(currentPhotoCount, 1);
-    try {
-      final bytes = (await _assetBundle.load(assetPath)).buffer.asUint8List();
-      return _persistManagedBytes(
-        inspectionId: inspectionId,
-        sectionKey: sectionKey,
-        itemKey: itemKey,
-        bytes: bytes,
-        caption: caption,
-        sortOrder: sortOrder,
-        source: ManagedPhotoSource.sampleAsset,
-        originalFileName: p.basename(assetPath),
-      );
-    } on FlutterError catch (error) {
-      throw PhotoServiceException.invalidAsset(
-        'Unable to load sample asset "$assetPath": ${error.message}',
-      );
-    }
   }
 
   Future<ManagedInspectionPhoto> saveImportedPhoto({
@@ -436,10 +403,6 @@ class PhotoService {
           return null;
         }
         return galleryFiles.first.readAsBytes();
-      case PhotoInputSource.sampleOne:
-        return _readAsset(AppConstants.samplePhotoAssetOne);
-      case PhotoInputSource.sampleTwo:
-        return _readAsset(AppConstants.samplePhotoAssetTwo);
     }
   }
 
@@ -478,11 +441,6 @@ class PhotoService {
       originalFileName: originalFileName,
       byteLength: outputBytes.length,
     );
-  }
-
-  Future<Uint8List> _readAsset(String assetPath) async {
-    final ByteData data = await _assetBundle.load(assetPath);
-    return data.buffer.asUint8List();
   }
 
   Uint8List _compressToJpeg(Uint8List rawBytes) {
