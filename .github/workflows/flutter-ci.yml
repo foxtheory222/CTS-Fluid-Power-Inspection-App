@@ -83,8 +83,8 @@ jobs:
               adb wait-for-device
               flutter test --no-pub "$1" -d emulator-5554
             }
-            run_integration integration_test/production_app_smoke_test.dart
-            run_integration integration_test/app_flow_test.dart
+            run_integration integration_test/production_app_smoke_test.dart || exit 1
+            run_integration integration_test/app_flow_test.dart || exit 1
 
       - name: Build debug APK
         run: flutter build apk --debug --no-pub
