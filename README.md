@@ -12,7 +12,7 @@ CTS Fluid Power Inspection App is an offline-only Flutter tablet application for
 ## UI Direction
 - The tablet UI was implemented directly in Flutter using the approved industrial visual direction because the design MCP service was not exposed in this workspace.
 - The current shell uses a deep navy surface, slate navigation, safety orange accents, Public Sans headings, and Inter body text.
-- Use local SQLite storage for indexed records and JSON aggregate bundles for export/import.
+- Use local SQLite storage for indexed records and self-contained ZIP restore bundles for export/import.
 
 ## Repository Docs
 - [Product Spec](docs/PRODUCT_SPEC.md)
@@ -64,5 +64,5 @@ CTS Fluid Power Inspection App is an offline-only Flutter tablet application for
 
 ## Storage And Data
 - The app stores inspections in local SQLite and keeps photos, PDFs, and export files on disk.
-- Export/import uses a local JSON aggregate bundle so inspection data can be restored offline.
+- Export/import uses a local ZIP bundle with a versioned JSON manifest, photos, signatures, and any generated PDF so an inspection can be restored offline.
 - No cloud service, API key, or server connection is required for V1.

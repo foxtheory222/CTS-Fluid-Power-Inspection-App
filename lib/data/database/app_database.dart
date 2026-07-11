@@ -10,18 +10,35 @@ class AppDatabase {
   AppDatabase();
 
   Database? _database;
+  Future<Database>? _openingDatabase;
 
   Future<Database> open() async {
     if (_database != null) {
       return _database!;
     }
+    final opening = _openingDatabase;
+    if (opening != null) {
+      return opening;
+    }
 
+    final future = _openDatabase();
+    _openingDatabase = future;
+    try {
+      final database = await future;
+      _database = database;
+      return database;
+    } finally {
+      _openingDatabase = null;
+    }
+  }
+
+  Future<Database> _openDatabase() async {
     final String dbPath = p.join(
       (await FileUtils.appRootDirectory()).path,
       AppConstants.databaseName,
     );
 
-    _database = await openDatabase(
+    return openDatabase(
       dbPath,
       version: 1,
       onCreate: (Database db, int version) async {
@@ -94,12 +111,11 @@ class AppDatabase {
         );
       },
     );
-
-    return _database!;
   }
 
   Future<void> close() async {
     await _database?.close();
     _database = null;
+    _openingDatabase = null;
   }
 }

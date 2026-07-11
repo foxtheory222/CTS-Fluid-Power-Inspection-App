@@ -11,6 +11,9 @@ class EmailHandoffPanel extends StatelessWidget {
     this.onRecipientRemoved,
     this.onSharePressed,
     this.onSaveMappingPressed,
+    this.recipientController,
+    this.recipientErrorText,
+    this.onAddRecipient,
     this.customerName,
     this.title = 'Email Handoff',
   });
@@ -21,6 +24,9 @@ class EmailHandoffPanel extends StatelessWidget {
   final ValueChanged<String>? onRecipientRemoved;
   final VoidCallback? onSharePressed;
   final VoidCallback? onSaveMappingPressed;
+  final TextEditingController? recipientController;
+  final String? recipientErrorText;
+  final VoidCallback? onAddRecipient;
   final String? customerName;
   final String title;
 
@@ -50,6 +56,29 @@ class EmailHandoffPanel extends StatelessWidget {
             if (customerName != null) ...[
               const SizedBox(height: 8),
               Text('Customer: $customerName'),
+            ],
+            if (recipientController != null) ...[
+              const SizedBox(height: 16),
+              TextField(
+                key: const Key('email-recipient-field'),
+                controller: recipientController,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                autocorrect: false,
+                enableSuggestions: false,
+                onSubmitted: (_) => onAddRecipient?.call(),
+                decoration: InputDecoration(
+                  labelText: 'Recipient email (optional)',
+                  helperText:
+                      'Saved locally for faster handoff after you share.',
+                  errorText: recipientErrorText,
+                  suffixIcon: IconButton(
+                    tooltip: 'Add recipient',
+                    onPressed: onAddRecipient,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ),
+              ),
             ],
             const SizedBox(height: 12),
             Wrap(
@@ -92,12 +121,14 @@ class EmailHandoffPanel extends StatelessWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: onSaveMappingPressed,
-              icon: const Icon(Icons.bookmark_add_outlined),
-              label: const Text('Save customer mapping'),
-            ),
+            if (onSaveMappingPressed != null) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: onSaveMappingPressed,
+                icon: const Icon(Icons.bookmark_add_outlined),
+                label: const Text('Save customer mapping'),
+              ),
+            ],
           ],
         ),
       ),

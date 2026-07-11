@@ -1,7 +1,7 @@
 name: cts_fluid_power_inspection_app
 description: Offline-first Android tablet inspection workflow for CTS Fluid Power.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.10.4

@@ -30,6 +30,12 @@ void main() {
               last_sequence INTEGER NOT NULL
             )
           ''');
+          await database.execute('''
+            CREATE TABLE inspections(
+              id TEXT PRIMARY KEY,
+              document_number TEXT NOT NULL UNIQUE
+            )
+          ''');
         },
       ),
     );
@@ -56,5 +62,19 @@ void main() {
       await service.nextDocumentNumber(db, DateTime.utc(2026, 4, 19)),
       '20260419-0001',
     );
+  });
+
+  test('skips a document number restored from an import', () async {
+    await db.insert('inspections', <String, Object?>{
+      'id': 'imported',
+      'document_number': '20260420-0001',
+    });
+
+    final next = await DocumentNumberService().nextDocumentNumber(
+      db,
+      DateTime.utc(2026, 4, 20),
+    );
+
+    expect(next, '20260420-0002');
   });
 }

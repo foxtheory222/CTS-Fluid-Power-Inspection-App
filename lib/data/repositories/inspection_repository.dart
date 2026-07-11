@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
@@ -73,6 +75,9 @@ class InspectionRepository {
     final Database db = await _database.open();
     final InspectionRecord? existing = await getInspection(inspection.id);
     final DateTime now = DateTime.now();
+    if (_shouldInvalidateGeneratedPdf(existing, inspection)) {
+      inspection.generatedPdfPath = null;
+    }
     inspection.updatedAt = now;
     final bool editedAfterEmail =
         existing?.emailedAt != null &&
@@ -84,12 +89,11 @@ class InspectionRepository {
     _refreshSectionStates(inspection);
     final ValidationResult validation =
         InspectionValidator.validateForCompletion(inspection);
-    if (inspection.emailedAt == null &&
-        validation.isValid &&
-        (inspection.signatureFilePath ?? '').trim().isNotEmpty) {
-      inspection.completedAt ??= now;
-    } else if (inspection.emailedAt == null) {
+    if (!validation.isValid) {
       inspection.completedAt = null;
+      inspection.emailedAt = null;
+    } else if (inspection.emailedAt != null && inspection.completedAt == null) {
+      inspection.emailedAt = null;
     }
     inspection.status = InspectionValidator.deriveStatus(inspection);
 
@@ -136,8 +140,11 @@ class InspectionRepository {
   }
 
   Future<InspectionRecord> markEmailed(InspectionRecord inspection) async {
+    final validation = InspectionValidator.validateForCompletion(inspection);
+    if (!validation.isValid || inspection.completedAt == null) {
+      throw StateError('Only a completed inspection can be marked as emailed.');
+    }
     inspection.emailedAt = DateTime.now();
-    inspection.completedAt ??= inspection.emailedAt;
     inspection.status = InspectionStatus.emailed;
     return saveInspection(inspection);
   }
@@ -549,6 +556,121 @@ class InspectionRepository {
       return '$base ${AppConstants.lotOWarning}';
     }
     return base;
+  }
+
+  bool _shouldInvalidateGeneratedPdf(
+    InspectionRecord? existing,
+    InspectionRecord inspection,
+  ) {
+    if (existing == null) {
+      return false;
+    }
+    if ((existing.generatedPdfPath ?? '').trim().isEmpty) {
+      return false;
+    }
+    if (existing.generatedPdfPath != inspection.generatedPdfPath) {
+      return false;
+    }
+    return _reportContentChanged(existing, inspection);
+  }
+
+  bool _reportContentChanged(
+    InspectionRecord existing,
+    InspectionRecord inspection,
+  ) {
+    return existing.documentNumber != inspection.documentNumber ||
+        existing.customer != inspection.customer ||
+        existing.workOrderNumber != inspection.workOrderNumber ||
+        existing.customerReference != inspection.customerReference ||
+        existing.assetName != inspection.assetName ||
+        existing.hpuAssetIdName != inspection.hpuAssetIdName ||
+        existing.siteLocation != inspection.siteLocation ||
+        existing.technicianName != inspection.technicianName ||
+        existing.servicingShop != inspection.servicingShop ||
+        existing.inspectionDateTime != inspection.inspectionDateTime ||
+        existing.finalTechComments != inspection.finalTechComments ||
+        existing.signatureFilePath != inspection.signatureFilePath ||
+        existing.customerSignatureFilePath !=
+            inspection.customerSignatureFilePath ||
+        existing.criticalAcknowledged != inspection.criticalAcknowledged ||
+        _encodedResponses(existing.responses) !=
+            _encodedResponses(inspection.responses) ||
+        _encodedPhotos(existing.photos) != _encodedPhotos(inspection.photos) ||
+        _encodedActionItems(existing.actionItems) !=
+            _encodedActionItems(inspection.actionItems) ||
+        _encodedList(existing.hoseEntries) !=
+            _encodedList(inspection.hoseEntries) ||
+        _encodedList(existing.componentEntries) !=
+            _encodedList(inspection.componentEntries) ||
+        _encodedList(existing.filterEntries) !=
+            _encodedList(inspection.filterEntries) ||
+        _encodedList(existing.requiredItems) !=
+            _encodedList(inspection.requiredItems);
+  }
+
+  String _encodedResponses(List<InspectionResponse> responses) {
+    return jsonEncode(
+      responses
+          .map(
+            (InspectionResponse response) => <String, Object?>{
+              'id': response.id,
+              'sectionKey': response.sectionKey,
+              'itemKey': response.itemKey,
+              'itemLabel': response.itemLabel,
+              'fieldType': response.fieldType.value,
+              'value': response.value,
+              'conditionRating': response.conditionRating?.value,
+              'isFlagged': response.isFlagged,
+              'comment': response.comment,
+            },
+          )
+          .toList(),
+    );
+  }
+
+  String _encodedPhotos(List<InspectionPhoto> photos) {
+    return jsonEncode(
+      photos
+          .map(
+            (InspectionPhoto photo) => <String, Object?>{
+              'id': photo.id,
+              'sectionKey': photo.sectionKey,
+              'itemKey': photo.itemKey,
+              'filePath': photo.filePath,
+              'caption': photo.caption,
+              'sortOrder': photo.sortOrder,
+              'capturedAt': photo.capturedAt.toUtc().toIso8601String(),
+            },
+          )
+          .toList(),
+    );
+  }
+
+  String _encodedActionItems(List<ActionItem> actionItems) {
+    return jsonEncode(
+      actionItems
+          .map(
+            (ActionItem item) => <String, Object?>{
+              'id': item.id,
+              'sourceSectionKey': item.sourceSectionKey,
+              'sourceItemKey': item.sourceItemKey,
+              'conditionRating': item.conditionRating?.value,
+              'title': item.title,
+              'description': item.description,
+              'partsRequired': item.partsRequired,
+              'isAutoGenerated': item.isAutoGenerated,
+            },
+          )
+          .toList(),
+    );
+  }
+
+  String _encodedList(List<dynamic> items) {
+    return jsonEncode(
+      items
+          .map((dynamic item) => item.toJson() as Map<String, dynamic>)
+          .toList(),
+    );
   }
 
   InspectionRecord _rowToInspection(Map<String, Object?> row) {

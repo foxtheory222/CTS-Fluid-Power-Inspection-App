@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
@@ -8,18 +10,26 @@ class PhotoGrid extends StatelessWidget {
     super.key,
     required this.photos,
     this.emptyLabel = 'No photos added yet.',
-    this.showAddTile = true,
+    this.onAddPhoto,
+    this.addButtonKey,
+    this.onRemovePhoto,
   });
 
   final List<InspectionPhotoView> photos;
   final String emptyLabel;
-  final bool showAddTile;
+  final VoidCallback? onAddPhoto;
+  final Key? addButtonKey;
+  final ValueChanged<InspectionPhotoView>? onRemovePhoto;
 
   @override
   Widget build(BuildContext context) {
     final items = List<InspectionPhotoView>.of(photos);
     if (items.isEmpty) {
-      return _EmptyPhotoState(label: emptyLabel);
+      return _EmptyPhotoState(
+        label: emptyLabel,
+        onAddPhoto: onAddPhoto,
+        addButtonKey: addButtonKey,
+      );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -28,9 +38,8 @@ class PhotoGrid extends StatelessWidget {
             : constraints.maxWidth >= 540
             ? 2
             : 1;
-        final itemCount = items.length + (showAddTile ? 1 : 0);
         return GridView.builder(
-          itemCount: itemCount,
+          itemCount: items.length + (onAddPhoto == null ? 0 : 1),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -40,11 +49,18 @@ class PhotoGrid extends StatelessWidget {
             childAspectRatio: 1.08,
           ),
           itemBuilder: (context, index) {
-            if (showAddTile && index == itemCount - 1) {
-              return _AddPhotoTile(label: 'Add photo');
+            if (index == items.length) {
+              return _AddPhotoCard(
+                onAddPhoto: onAddPhoto!,
+                addButtonKey: addButtonKey,
+              );
             }
             final photo = items[index];
-            return _PhotoCard(photo: photo, index: index + 1);
+            return _PhotoCard(
+              photo: photo,
+              index: index + 1,
+              onRemovePhoto: onRemovePhoto,
+            );
           },
         );
       },
@@ -52,11 +68,60 @@ class PhotoGrid extends StatelessWidget {
   }
 }
 
+class _AddPhotoCard extends StatelessWidget {
+  const _AddPhotoCard({required this.onAddPhoto, this.addButtonKey});
+
+  final VoidCallback onAddPhoto;
+  final Key? addButtonKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        key: addButtonKey,
+        borderRadius: BorderRadius.circular(20),
+        onTap: onAddPhoto,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: CtsPalette.orange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.add_a_photo_outlined,
+                  color: CtsPalette.orange,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Add photo',
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PhotoCard extends StatelessWidget {
-  const _PhotoCard({required this.photo, required this.index});
+  const _PhotoCard({
+    required this.photo,
+    required this.index,
+    this.onRemovePhoto,
+  });
 
   final InspectionPhotoView photo;
   final int index;
+  final ValueChanged<InspectionPhotoView>? onRemovePhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +137,7 @@ class _PhotoCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(photo.assetPath, fit: BoxFit.cover),
+                  _PhotoImage(path: photo.assetPath),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -106,6 +171,20 @@ class _PhotoCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (onRemovePhoto != null)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: IconButton.filled(
+                        tooltip: 'Remove ${photo.caption}',
+                        onPressed: () => onRemovePhoto!(photo),
+                        icon: const Icon(Icons.delete_outline),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withValues(alpha: 0.68),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -139,68 +218,51 @@ class _PhotoCard extends StatelessWidget {
   }
 }
 
-class _AddPhotoTile extends StatelessWidget {
-  const _AddPhotoTile({required this.label});
+class _PhotoImage extends StatelessWidget {
+  const _PhotoImage({required this.path});
 
-  final String label;
+  final String path;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {},
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: CtsPalette.orange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.add_a_photo_outlined,
-                  color: CtsPalette.orange,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Camera or gallery',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    if (path.startsWith('/') || path.startsWith('file:')) {
+      return Image.file(
+        File(path.replaceFirst('file://', '')),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const _MissingPhoto(),
+      );
+    }
+    return Image.asset(
+      path,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => const _MissingPhoto(),
+    );
+  }
+}
+
+class _MissingPhoto extends StatelessWidget {
+  const _MissingPhoto();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: const Icon(Icons.broken_image_outlined, color: CtsPalette.slate),
     );
   }
 }
 
 class _EmptyPhotoState extends StatelessWidget {
-  const _EmptyPhotoState({required this.label});
+  const _EmptyPhotoState({
+    required this.label,
+    this.onAddPhoto,
+    this.addButtonKey,
+  });
 
   final String label;
+  final VoidCallback? onAddPhoto;
+  final Key? addButtonKey;
 
   @override
   Widget build(BuildContext context) {
@@ -235,11 +297,15 @@ class _EmptyPhotoState extends StatelessWidget {
               ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          FilledButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.add),
-            label: const Text('Add first photo'),
-          ),
+          if (onAddPhoto != null) ...[
+            const SizedBox(width: 14),
+            OutlinedButton.icon(
+              key: addButtonKey,
+              onPressed: onAddPhoto,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: const Text('Add photo'),
+            ),
+          ],
         ],
       ),
     );

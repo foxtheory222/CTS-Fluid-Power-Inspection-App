@@ -1,7 +1,7 @@
 # UI Spec
 
 ## Design Principles
-- Landscape-first tablet layout.
+- Landscape-first tablet layout with an adaptive phone/portrait fallback for Android 16 and resizable displays.
 - Large touch targets and clear section navigation.
 - High contrast, industrial, professional styling.
 - Minimal clutter and fast field use.

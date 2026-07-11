@@ -22,6 +22,31 @@ void main() {
     expect(result.isValid, isTrue);
   });
 
+  test('completion requires additional parts decision', () {
+    final inspection = buildInspection(
+      id: 'inspection-missing-additional',
+      documentNumber: '20260420-0011',
+      status: InspectionStatus.inProgress,
+    );
+    fillRequiredResponses(inspection);
+    inspection.signatureFilePath = '/tmp/signature.png';
+    inspection.completedAt = DateTime.utc(2026, 4, 20, 12, 30);
+    inspection.responses = inspection.responses
+        .where(
+          (response) =>
+              response.itemKey != InspectionItemKeys.additionalPartsRepairs,
+        )
+        .toList(growable: false);
+
+    final result = InspectionValidator.validateForCompletion(inspection);
+
+    expect(result.isValid, isFalse);
+    expect(
+      result.issues.map((issue) => issue.message),
+      contains('Additional parts / repairs decision must be answered.'),
+    );
+  });
+
   test('flagged responses require comment photo and action item', () {
     final inspection = buildInspection(
       id: 'inspection-2',

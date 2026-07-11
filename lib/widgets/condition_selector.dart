@@ -12,7 +12,7 @@ class ConditionSelector extends StatelessWidget {
   });
 
   final ConditionRating? value;
-  final ValueChanged<ConditionRating> onChanged;
+  final ValueChanged<ConditionRating?> onChanged;
   final bool compact;
 
   @override
@@ -66,8 +66,11 @@ class ConditionSelector extends StatelessWidget {
           return BorderSide(color: color);
         }),
       ),
+      emptySelectionAllowed: true,
       selected: value == null ? <ConditionRating>{} : {value!},
-      onSelectionChanged: (selection) => onChanged(selection.first),
+      onSelectionChanged: (selection) {
+        onChanged(selection.isEmpty ? null : selection.first);
+      },
     );
   }
 }

@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../core/workspace_models.dart';
 import '../../core/workspace_providers.dart';
+import '../../features/email/email_handoff_panel.dart';
+import '../../services/email_service.dart';
 import '../../widgets/photo_grid.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/status_badge.dart';
@@ -25,6 +27,85 @@ class InspectionDetailScreen extends ConsumerWidget {
       return _NotFoundState(inspectionId: inspectionId);
     }
 
+    Future<void> runAction(Future<void> Function() action) async {
+      try {
+        await action();
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Bad state: ', '')),
+          ),
+        );
+      }
+    }
+
+    Future<void> shareReport() async {
+      await runAction(() async {
+        var suggestions = const <RecentEmailRecipient>[];
+        try {
+          suggestions = await controller.emailRecipientSuggestions(
+            inspection.customer,
+          );
+        } catch (_) {
+          // Recipient history is optional; a storage issue must not block share.
+        }
+        if (!context.mounted) {
+          return;
+        }
+        final recipients = await showModalBottomSheet<List<String>>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          constraints: const BoxConstraints(maxWidth: 720),
+          builder: (context) => _EmailHandoffSheet(
+            customer: inspection.customer,
+            suggestions: suggestions,
+          ),
+        );
+        if (recipients == null || !context.mounted) {
+          return;
+        }
+
+        await controller.emailInspectionPdf(
+          inspection.id,
+          recipients: recipients,
+        );
+        if (!context.mounted) {
+          return;
+        }
+        final sent = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Was the report sent?'),
+            content: const Text(
+              'Only confirm after the email or share app has finished sending the report.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Not yet'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Yes, mark emailed'),
+              ),
+            ],
+          ),
+        );
+        if (sent == true) {
+          await controller.confirmInspectionEmailed(inspection.id);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Report marked as emailed.')),
+            );
+          }
+        }
+      });
+    }
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,8 +117,17 @@ class InspectionDetailScreen extends ConsumerWidget {
               extra: inspection,
             ),
             onDuplicate: () {
-              final duplicate = controller.duplicateInspection(inspection);
-              context.go('/inspection/${duplicate.id}/edit', extra: duplicate);
+              runAction(() async {
+                final duplicate = await controller.duplicatePersistedInspection(
+                  inspection,
+                );
+                if (context.mounted) {
+                  context.go(
+                    '/inspection/${duplicate.id}/edit',
+                    extra: duplicate,
+                  );
+                }
+              });
             },
           ),
           const SizedBox(height: 18),
@@ -45,7 +135,37 @@ class InspectionDetailScreen extends ConsumerWidget {
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1180;
               final details = _DetailSections(inspection: inspection);
-              final side = _SideSummary(inspection: inspection);
+              final side = _SideSummary(
+                inspection: inspection,
+                actionsEnabled:
+                    inspection.status == InspectionStatus.complete ||
+                    inspection.status == InspectionStatus.emailed,
+                onGeneratePdf: () => runAction(() async {
+                  final pdfFile = await controller.generatePdf(inspection.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('PDF generated at ${pdfFile.path}'),
+                      ),
+                    );
+                  }
+                }),
+                onEmail: shareReport,
+                onExport: () => runAction(() async {
+                  final result = await controller.exportInspection(
+                    inspection.id,
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Inspection exported to ${result.archiveFile.path}',
+                        ),
+                      ),
+                    );
+                  }
+                }),
+              );
               if (wide) {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,6 +182,104 @@ class InspectionDetailScreen extends ConsumerWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmailHandoffSheet extends StatefulWidget {
+  const _EmailHandoffSheet({required this.customer, required this.suggestions});
+
+  final String customer;
+  final List<RecentEmailRecipient> suggestions;
+
+  @override
+  State<_EmailHandoffSheet> createState() => _EmailHandoffSheetState();
+}
+
+class _EmailHandoffSheetState extends State<_EmailHandoffSheet> {
+  final TextEditingController _recipientController = TextEditingController();
+  final List<String> _selectedRecipients = <String>[];
+  String? _recipientError;
+
+  @override
+  void dispose() {
+    _recipientController.dispose();
+    super.dispose();
+  }
+
+  bool _addRecipient([String? candidate]) {
+    final email = (candidate ?? _recipientController.text).trim();
+    if (email.isEmpty) {
+      setState(() => _recipientError = null);
+      return true;
+    }
+    if (!_looksLikeEmail(email)) {
+      setState(() => _recipientError = 'Enter a valid email address.');
+      return false;
+    }
+    setState(() {
+      _recipientError = null;
+      if (!_selectedRecipients.any(
+        (existing) => existing.toLowerCase() == email.toLowerCase(),
+      )) {
+        _selectedRecipients.add(email);
+      }
+      _recipientController.clear();
+    });
+    return true;
+  }
+
+  void _continueToShare() {
+    if (!_addRecipient()) {
+      return;
+    }
+    Navigator.pop(context, List<String>.unmodifiable(_selectedRecipients));
+  }
+
+  bool _looksLikeEmail(String value) {
+    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            EmailHandoffPanel(
+              title: 'Share inspection report',
+              customerName: widget.customer,
+              recentRecipients: widget.suggestions,
+              selectedRecipients: _selectedRecipients,
+              recipientController: _recipientController,
+              recipientErrorText: _recipientError,
+              onAddRecipient: _addRecipient,
+              onRecipientSelected: _addRecipient,
+              onRecipientRemoved: (email) {
+                setState(() => _selectedRecipients.remove(email));
+              },
+              onSharePressed: _continueToShare,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'The selected share app controls final addressing and delivery. Recipient history remains on this device.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -91,81 +309,98 @@ class _DetailHeader extends StatelessWidget {
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    StatusBadge.forInspection(inspection.status),
-                    StatusBadge(
-                      label: inspection.documentNumber,
-                      color: CtsPalette.orangeSoft,
-                      icon: Icons.confirmation_number_outlined,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  inspection.customer,
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 620;
+          final details = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  StatusBadge.forInspection(inspection.status),
+                  StatusBadge(
+                    label: inspection.documentNumber,
+                    color: CtsPalette.orangeSoft,
+                    icon: Icons.confirmation_number_outlined,
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                inspection.customer,
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '${inspection.assetName} · ${inspection.workOrderNumber}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.78),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${inspection.assetName} · ${inspection.workOrderNumber}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.78),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _HeaderInfo(
+                    label: 'Technician',
+                    value: inspection.technicianName,
                   ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _HeaderInfo(
-                      label: 'Technician',
-                      value: inspection.technicianName,
-                    ),
-                    _HeaderInfo(label: 'Site', value: inspection.siteLocation),
-                    _HeaderInfo(
-                      label: 'Servicing Shop',
-                      value: inspection.servicingShop,
-                    ),
-                    _HeaderInfo(
-                      label: 'Updated',
-                      value: DateFormat(
-                        'MMM d, h:mm a',
-                      ).format(inspection.lastUpdatedAt),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 18),
-          Column(
+                  _HeaderInfo(label: 'Site', value: inspection.siteLocation),
+                  _HeaderInfo(
+                    label: 'Servicing Shop',
+                    value: inspection.servicingShop,
+                  ),
+                  _HeaderInfo(
+                    label: 'Updated',
+                    value: DateFormat(
+                      'MMM d, h:mm a',
+                    ).format(inspection.lastUpdatedAt),
+                  ),
+                ],
+              ),
+            ],
+          );
+          final actions = Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
               FilledButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Edit'),
               ),
-              const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: onDuplicate,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white70),
+                ),
                 icon: const Icon(Icons.copy_outlined),
                 label: const Text('Duplicate'),
               ),
             ],
-          ),
-        ],
+          );
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [details, const SizedBox(height: 18), actions],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: details),
+              const SizedBox(width: 18),
+              actions,
+            ],
+          );
+        },
       ),
     );
   }
@@ -299,7 +534,7 @@ class _DetailSections extends StatelessWidget {
           title: 'Media Summary',
           subtitle:
               'Photos embedded in the report and stored locally on the device.',
-          child: PhotoGrid(photos: inspection.photos, showAddTile: false),
+          child: PhotoGrid(photos: inspection.photos),
         ),
       ],
     );
@@ -519,9 +754,19 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _SideSummary extends StatelessWidget {
-  const _SideSummary({required this.inspection});
+  const _SideSummary({
+    required this.inspection,
+    required this.actionsEnabled,
+    required this.onGeneratePdf,
+    required this.onEmail,
+    required this.onExport,
+  });
 
   final InspectionSummary inspection;
+  final bool actionsEnabled;
+  final VoidCallback onGeneratePdf;
+  final VoidCallback onEmail;
+  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -533,22 +778,26 @@ class _SideSummary extends StatelessWidget {
           _ActionButton(
             icon: Icons.picture_as_pdf_outlined,
             title: 'Generate PDF',
-            subtitle: 'Create the branded local report.',
-            onTap: () {},
+            subtitle: actionsEnabled
+                ? 'Create the branded local report.'
+                : 'Complete the inspection before generating a final report.',
+            onTap: actionsEnabled ? onGeneratePdf : null,
           ),
           const SizedBox(height: 12),
           _ActionButton(
             icon: Icons.email_outlined,
-            title: 'Email handoff',
-            subtitle: 'Open the device mail or share flow.',
-            onTap: () {},
+            title: 'Share report',
+            subtitle: actionsEnabled
+                ? 'Open email or another device share app.'
+                : 'Complete the inspection before sharing.',
+            onTap: actionsEnabled ? onEmail : null,
           ),
           const SizedBox(height: 12),
           _ActionButton(
             icon: Icons.file_download_outlined,
             title: 'Export inspection',
             subtitle: 'Bundle PDF and restore data locally.',
-            onTap: () {},
+            onTap: onExport,
           ),
           const SizedBox(height: 16),
           _SummaryMini(
@@ -578,13 +827,13 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -595,7 +844,11 @@ class _ActionButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: onTap == null
+              ? Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.52)
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
@@ -607,7 +860,12 @@ class _ActionButton extends StatelessWidget {
                 color: CtsPalette.orange.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: CtsPalette.orange),
+              child: Icon(
+                icon,
+                color: onTap == null
+                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                    : CtsPalette.orange,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

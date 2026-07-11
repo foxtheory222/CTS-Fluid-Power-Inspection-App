@@ -335,6 +335,15 @@ class InspectionValidator {
           InspectionSectionKeys.followUpRepairsQuoting,
           InspectionItemKeys.additionalPartsRepairs,
         );
+    if ((additionalRepairsResponse?.value ?? '').trim().isEmpty) {
+      issues.add(
+        const ValidationIssue(
+          sectionKey: InspectionSectionKeys.followUpRepairsQuoting,
+          itemKey: InspectionItemKeys.additionalPartsRepairs,
+          message: 'Additional parts / repairs decision must be answered.',
+        ),
+      );
+    }
     if ((additionalRepairsResponse?.value ?? '') == 'yes' &&
         inspection.requiredItems.isEmpty &&
         inspection.actionItems.isEmpty) {

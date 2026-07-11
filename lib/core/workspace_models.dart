@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'constants.dart';
@@ -173,6 +175,10 @@ class InspectionSummary {
     String? finalTechComments,
     bool? criticalAcknowledged,
     String? generatedPdfPath,
+    bool clearCompletedAt = false,
+    bool clearEmailedAt = false,
+    bool clearFinalTechComments = false,
+    bool clearGeneratedPdfPath = false,
   }) {
     return InspectionSummary(
       id: id ?? this.id,
@@ -196,11 +202,15 @@ class InspectionSummary {
       criticalCount: criticalCount ?? this.criticalCount,
       photoCount: photoCount ?? this.photoCount,
       lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
-      completedAt: completedAt ?? this.completedAt,
-      emailedAt: emailedAt ?? this.emailedAt,
-      finalTechComments: finalTechComments ?? this.finalTechComments,
+      completedAt: clearCompletedAt ? null : completedAt ?? this.completedAt,
+      emailedAt: clearEmailedAt ? null : emailedAt ?? this.emailedAt,
+      finalTechComments: clearFinalTechComments
+          ? null
+          : finalTechComments ?? this.finalTechComments,
       criticalAcknowledged: criticalAcknowledged ?? this.criticalAcknowledged,
-      generatedPdfPath: generatedPdfPath ?? this.generatedPdfPath,
+      generatedPdfPath: clearGeneratedPdfPath
+          ? null
+          : generatedPdfPath ?? this.generatedPdfPath,
     );
   }
 }
@@ -236,3 +246,93 @@ const inspectionSectionTitles = <String, String>{
   InspectionSectionKeys.followUpRepairsQuoting: 'Follow-Up Repairs & Quoting',
   InspectionSectionKeys.reviewCompletion: 'Review & Completion',
 };
+
+class InspectionFormDraft {
+  const InspectionFormDraft({
+    this.inspectionId,
+    required this.customer,
+    required this.workOrderNumber,
+    required this.customerReference,
+    required this.assetName,
+    required this.siteLocation,
+    required this.technicianName,
+    required this.servicingShop,
+    required this.finalTechComments,
+    this.componentPartNumber,
+    this.componentPartNumbers = const <String, String>{},
+    this.fluidLevel,
+    this.fluidClarity,
+    this.tankIntegrity,
+    this.tankNotes,
+    this.tankCleanoutPerformed,
+    this.hoseCondition,
+    this.hoseNameLocation,
+    this.hosePartsRequired,
+    this.breatherPartNumber,
+    this.breatherReplaced,
+    this.pressureFilterPartNumber,
+    this.pressureFilterReplaced,
+    this.returnFilterPartNumber,
+    this.returnFilterReplaced,
+    this.equipmentRunning,
+    this.pumpCompensatorSetting,
+    this.changePumpCompensator,
+    this.systemReliefSetting,
+    this.changeSystemRelief,
+    this.operatingTemperature,
+    this.operatingTemperatureUnit,
+    this.accumulatorPreCharge,
+    this.chargeAccumulator,
+    this.operationalNotes,
+    this.additionalPartsRepairs,
+    this.photos = const <InspectionPhotoView>[],
+    this.criticalAcknowledged = false,
+    this.technicianSignaturePngBytes,
+    this.customerSignaturePngBytes,
+    this.keepExistingTechnicianSignature = true,
+    this.keepExistingCustomerSignature = true,
+  });
+
+  final String? inspectionId;
+  final String customer;
+  final String workOrderNumber;
+  final String customerReference;
+  final String assetName;
+  final String siteLocation;
+  final String technicianName;
+  final String servicingShop;
+  final String finalTechComments;
+  final String? componentPartNumber;
+  final Map<String, String> componentPartNumbers;
+  final FluidLevelOption? fluidLevel;
+  final FluidClarityOption? fluidClarity;
+  final ConditionRating? tankIntegrity;
+  final String? tankNotes;
+  final YesNoNa? tankCleanoutPerformed;
+  final ConditionRating? hoseCondition;
+  final String? hoseNameLocation;
+  final String? hosePartsRequired;
+  final String? breatherPartNumber;
+  final FilterReplacementStatus? breatherReplaced;
+  final String? pressureFilterPartNumber;
+  final FilterReplacementStatus? pressureFilterReplaced;
+  final String? returnFilterPartNumber;
+  final FilterReplacementStatus? returnFilterReplaced;
+  final YesNoNa? equipmentRunning;
+  final String? pumpCompensatorSetting;
+  final YesNoNa? changePumpCompensator;
+  final String? systemReliefSetting;
+  final YesNoNa? changeSystemRelief;
+  final String? operatingTemperature;
+  final TemperatureUnit? operatingTemperatureUnit;
+  final String? accumulatorPreCharge;
+  final YesNoNa? chargeAccumulator;
+  final String? operationalNotes;
+  final YesNoNa? additionalPartsRepairs;
+  final List<InspectionPhotoView> photos;
+  final bool criticalAcknowledged;
+  final Uint8List? technicianSignaturePngBytes;
+  final Uint8List? customerSignaturePngBytes;
+  final bool keepExistingTechnicianSignature;
+  final bool keepExistingCustomerSignature;
+}
