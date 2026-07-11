@@ -481,7 +481,10 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final textScale = MediaQuery.textScalerOf(context).scale(1);
-        final showRail = constraints.maxWidth >= 1120 && textScale <= 1.25;
+        final showRail =
+            constraints.maxWidth >= 1120 &&
+            constraints.maxHeight >= 620 &&
+            textScale <= 1.25;
         final showSummary = constraints.maxWidth >= 1350 && textScale <= 1.25;
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1916,55 +1919,62 @@ class _SectionRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      title: 'Sections',
-      subtitle: 'Tap to jump between the fixed inspection sections.',
-      child: SizedBox(
-        height: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              for (final section in sections) ...[
-                InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => onJump(section.key),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: _stateColor(
-                          section.status,
-                        ).withValues(alpha: 0.24),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final listHeight = constraints.hasBoundedHeight
+            ? (constraints.maxHeight - 340).clamp(260.0, 520.0).toDouble()
+            : 520.0;
+        return SectionCard(
+          title: 'Sections',
+          subtitle: 'Tap to jump between the fixed inspection sections.',
+          child: SizedBox(
+            height: listHeight,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (final section in sections) ...[
+                    InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => onJump(section.key),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: _stateColor(
+                              section.status,
+                            ).withValues(alpha: 0.24),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              section.title,
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 8),
+                            StatusChip(
+                              text: section.status.label,
+                              color: _stateColor(section.status),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          section.title,
-                          style: Theme.of(context).textTheme.labelLarge
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 8),
-                        StatusChip(
-                          text: section.status.label,
-                          color: _stateColor(section.status),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (section != sections.last) const SizedBox(height: 8),
-              ],
-            ],
+                    if (section != sections.last) const SizedBox(height: 8),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
