@@ -69,14 +69,19 @@ jobs:
             flutter drive --no-dds --no-pub --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false --driver=test_driver/integration_test.dart --target=integration_test/production_app_smoke_test.dart -d emulator-5554
             flutter drive --no-dds --no-pub --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false --driver=test_driver/integration_test.dart --target=integration_test/app_flow_test.dart -d emulator-5554
 
-      - name: Build debug APK
-        run: flutter build apk --debug --no-pub
+      - name: Reset build products before production APK
+        run: |
+          flutter clean
+          flutter pub get
 
       - name: Build release APK
         run: flutter build apk --release --no-pub
 
       - name: Run Android release lint
         run: ./android/gradlew -p android lintRelease --no-daemon
+
+      - name: Build debug APK
+        run: flutter build apk --debug --no-pub
 
       - name: Upload APKs, coverage, and lint reports
         if: always()
