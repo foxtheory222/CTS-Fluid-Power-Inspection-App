@@ -66,25 +66,8 @@ jobs:
             -no-snapshot -no-window -gpu swiftshader_indirect -noaudio
             -no-boot-anim -camera-back none
           script: |
-            run_integration() {
-              log_file="$(mktemp)"
-              if flutter test --no-pub "$1" -d emulator-5554 >"$log_file" 2>&1; then
-                cat "$log_file"
-                rm -f "$log_file"
-                return 0
-              fi
-              cat "$log_file"
-              if ! grep -q "Failed to start Dart Development Service" "$log_file"; then
-                rm -f "$log_file"
-                return 1
-              fi
-              rm -f "$log_file"
-              echo "DDS failed to start; retrying $1 on the booted emulator."
-              adb wait-for-device
-              flutter test --no-pub "$1" -d emulator-5554
-            }
-            run_integration integration_test/production_app_smoke_test.dart || exit 1
-            run_integration integration_test/app_flow_test.dart || exit 1
+            log_file="$(mktemp)"; if flutter test --no-pub integration_test/production_app_smoke_test.dart -d emulator-5554 >"$log_file" 2>&1; then cat "$log_file"; rm -f "$log_file"; else cat "$log_file"; if grep -q "Failed to start Dart Development Service" "$log_file"; then rm -f "$log_file"; echo "DDS failed to start; retrying integration_test/production_app_smoke_test.dart on the booted emulator."; adb wait-for-device; flutter test --no-pub integration_test/production_app_smoke_test.dart -d emulator-5554; else rm -f "$log_file"; exit 1; fi; fi
+            log_file="$(mktemp)"; if flutter test --no-pub integration_test/app_flow_test.dart -d emulator-5554 >"$log_file" 2>&1; then cat "$log_file"; rm -f "$log_file"; else cat "$log_file"; if grep -q "Failed to start Dart Development Service" "$log_file"; then rm -f "$log_file"; echo "DDS failed to start; retrying integration_test/app_flow_test.dart on the booted emulator."; adb wait-for-device; flutter test --no-pub integration_test/app_flow_test.dart -d emulator-5554; else rm -f "$log_file"; exit 1; fi; fi
 
       - name: Build debug APK
         run: flutter build apk --debug --no-pub
