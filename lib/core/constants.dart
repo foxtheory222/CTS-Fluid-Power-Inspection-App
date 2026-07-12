@@ -16,6 +16,7 @@ class AppConstants {
   static const String importsFolderName = 'imports';
   static const String reportsFolderName = 'reports';
   static const String signatureFileName = 'signature.png';
+  static const String customerSignatureFileName = 'customer_signature.png';
   static const String lotOWarning =
       'Critical / Out of Service condition identified. Lockout/Tagout required. '
       'Unit must not be operated until corrective action is complete.';
@@ -128,6 +129,7 @@ class InspectionItemKeys {
   static const String operatingTemperatureUnit = 'operating_temperature_unit';
   static const String accumulatorPreCharge = 'accumulator_pre_charge';
   static const String chargeAccumulator = 'charge_accumulator';
+  static const String operationalNotes = 'operational_notes';
   static const String additionalPartsRepairs = 'additional_parts_repairs';
   static const String finalTechComments = 'final_tech_comments';
   static const String technicianSignature = 'technician_signature';

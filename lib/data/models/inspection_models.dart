@@ -536,6 +536,7 @@ class InspectionRecord {
     this.emailedAt,
     this.finalTechComments = '',
     this.signatureFilePath,
+    this.customerSignatureFilePath,
     this.criticalAcknowledged = false,
     this.generatedPdfPath,
     this.sections = const <InspectionSectionProgress>[],
@@ -566,6 +567,7 @@ class InspectionRecord {
   DateTime? emailedAt;
   String finalTechComments;
   String? signatureFilePath;
+  String? customerSignatureFilePath;
   bool criticalAcknowledged;
   String? generatedPdfPath;
   List<InspectionSectionProgress> sections;
@@ -603,6 +605,7 @@ class InspectionRecord {
           : DateTime.parse(json['emailedAt'] as String).toLocal(),
       finalTechComments: json['finalTechComments'] as String? ?? '',
       signatureFilePath: json['signatureFilePath'] as String?,
+      customerSignatureFilePath: json['customerSignatureFilePath'] as String?,
       criticalAcknowledged: json['criticalAcknowledged'] as bool? ?? false,
       generatedPdfPath: json['generatedPdfPath'] as String?,
       sections: (json['sections'] as List<dynamic>? ?? <dynamic>[])
@@ -660,6 +663,7 @@ class InspectionRecord {
       'emailedAt': emailedAt?.toIso8601String(),
       'finalTechComments': finalTechComments,
       'signatureFilePath': signatureFilePath,
+      'customerSignatureFilePath': customerSignatureFilePath,
       'criticalAcknowledged': criticalAcknowledged,
       'generatedPdfPath': generatedPdfPath,
       'sections': sections

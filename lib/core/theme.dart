@@ -5,17 +5,18 @@ class CtsPalette {
   static const navyAlt = Color(0xFF09182E);
   static const slate = Color(0xFF47607E);
   static const slateMuted = Color(0xFF6B7D93);
-  static const orange = Color(0xFFEA6400);
+  static const orange = Color(0xFFC94F00);
   static const orangeSoft = Color(0xFFFFA24A);
   static const steel = Color(0xFF9FB1C5);
   static const cloud = Color(0xFFE7EDF4);
   static const surface = Color(0xFF0B172A);
   static const surfaceAlt = Color(0xFF102138);
   static const border = Color(0xFF23364D);
-  static const success = Color(0xFF33C48A);
-  static const warning = Color(0xFFF5A524);
-  static const danger = Color(0xFFE04B4B);
-  static const info = Color(0xFF5AA7FF);
+  static const success = Color(0xFF087A50);
+  static const warning = Color(0xFF945A00);
+  static const danger = Color(0xFFC62828);
+  static const dangerOnDark = Color(0xFFFF8A80);
+  static const info = Color(0xFF1565C0);
 }
 
 ThemeData buildCtsTheme(Brightness brightness) {
@@ -95,6 +96,7 @@ ThemeData buildCtsTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     colorScheme: scheme,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
     scaffoldBackgroundColor: dark ? CtsPalette.navy : const Color(0xFFF4F7FB),
     fontFamily: 'Inter',
     textTheme: baseTextTheme.apply(
@@ -132,12 +134,21 @@ ThemeData buildCtsTheme(Brightness brightness) {
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: CtsPalette.orange, width: 1.8),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: CtsPalette.danger, width: 1.4),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: CtsPalette.danger, width: 1.8),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: CtsPalette.orange,
         foregroundColor: Colors.white,
+        minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         textStyle: const TextStyle(
           fontFamily: 'Inter',
@@ -150,6 +161,7 @@ ThemeData buildCtsTheme(Brightness brightness) {
       style: FilledButton.styleFrom(
         backgroundColor: CtsPalette.orange,
         foregroundColor: Colors.white,
+        minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         textStyle: const TextStyle(
           fontFamily: 'Inter',
@@ -161,6 +173,7 @@ ThemeData buildCtsTheme(Brightness brightness) {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: scheme.onSurface,
+        minimumSize: const Size(48, 48),
         side: BorderSide(color: scheme.outlineVariant),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         textStyle: const TextStyle(

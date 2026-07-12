@@ -77,11 +77,11 @@ void main() {
         await tester.tap(find.byKey(const Key('pdf_button')));
         await Future<void>.delayed(const Duration(milliseconds: 500));
       });
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpUntilFound(find.textContaining('PDF generated at'));
       expect(find.textContaining('PDF generated at'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('email_button')));
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpUntilFound(find.textContaining('Marked as emailed'));
       expect(find.textContaining('Marked as emailed'), findsOneWidget);
       expect(find.textContaining('Status: Emailed'), findsWidgets);
 
@@ -89,14 +89,14 @@ void main() {
         await tester.tap(find.byKey(const Key('export_button')));
         await Future<void>.delayed(const Duration(seconds: 1));
       });
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpUntilFound(find.textContaining('Exported to'));
       expect(find.textContaining('Exported to'), findsOneWidget);
 
       await tester.runAsync(() async {
         await tester.tap(find.byKey(const Key('import_button')));
         await Future<void>.delayed(const Duration(seconds: 1));
       });
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpUntilFound(find.textContaining('Imported'));
       expect(find.textContaining('Imported'), findsOneWidget);
 
       final importedDocument = tester
@@ -111,4 +111,21 @@ void main() {
       expect(find.textContaining('Status: Draft'), findsWidgets);
     },
   );
+}
+
+extension on WidgetTester {
+  Future<void> pumpUntilFound(
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final end = binding.clock.fromNowBy(timeout);
+    do {
+      await pump(const Duration(milliseconds: 100));
+      if (any(finder)) {
+        return;
+      }
+    } while (binding.clock.now().isBefore(end));
+
+    expect(finder, findsOneWidget);
+  }
 }

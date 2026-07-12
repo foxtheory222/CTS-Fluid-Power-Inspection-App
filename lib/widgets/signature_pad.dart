@@ -9,11 +9,17 @@ class SignaturePad extends StatelessWidget {
     required this.controller,
     required this.isSigned,
     required this.onClear,
+    this.title = 'Technician signature',
+    this.padKey = const Key('signature_pad_area'),
+    this.inputKey = const Key('signature_input_area'),
   });
 
   final SignatureController controller;
   final bool isSigned;
   final VoidCallback onClear;
+  final String title;
+  final Key padKey;
+  final Key inputKey;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +29,7 @@ class SignaturePad extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Technician signature',
+              title,
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -35,6 +41,7 @@ class SignaturePad extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Container(
+          key: padKey,
           height: 180,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -46,6 +53,7 @@ class SignaturePad extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: Signature(
+              key: inputKey,
               controller: controller,
               backgroundColor: Theme.of(
                 context,
@@ -54,14 +62,16 @@ class SignaturePad extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             OutlinedButton.icon(
               onPressed: onClear,
               icon: const Icon(Icons.clear),
               label: const Text('Clear signature'),
             ),
-            const SizedBox(width: 12),
             Text(
               'Draw the signature with a stylus or finger.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

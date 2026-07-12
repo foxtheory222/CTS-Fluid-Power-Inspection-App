@@ -112,55 +112,61 @@ class _HeroBanner extends StatelessWidget {
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Dashboard',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 760;
+          final introduction = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Dashboard',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Fast access to draft, in-progress, complete, and emailed inspections from a clean field layout.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  FilledButton.icon(
+                    onPressed: onNewInspection,
+                    icon: const Icon(Icons.add),
+                    label: const Text('New Inspection'),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Fast access to draft, in-progress, complete, and emailed inspections from a clean tablet layout built for field work.',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.82),
-                    height: 1.35,
+                  OutlinedButton.icon(
+                    onPressed: onOpenInspections,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white70),
+                    ),
+                    icon: const Icon(Icons.search),
+                    label: const Text('Browse Inspections'),
                   ),
-                ),
-                const SizedBox(height: 18),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: onNewInspection,
-                      icon: const Icon(Icons.add),
-                      label: const Text('New Inspection'),
+                  OutlinedButton.icon(
+                    onPressed: onOpenActions,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white70),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: onOpenInspections,
-                      icon: const Icon(Icons.search),
-                      label: const Text('Browse Inspections'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: onOpenActions,
-                      icon: const Icon(Icons.assignment_turned_in_outlined),
-                      label: const Text('Action Items'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 24),
-          Container(
-            width: 280,
+                    icon: const Icon(Icons.assignment_turned_in_outlined),
+                    label: const Text('Action Items'),
+                  ),
+                ],
+              ),
+            ],
+          );
+          final focus = Container(
+            width: compact ? double.infinity : 280,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.06),
@@ -180,7 +186,7 @@ class _HeroBanner extends StatelessWidget {
                 const SizedBox(height: 10),
                 const StatusBadge(
                   label: 'Critical reports require LOTO acknowledgement',
-                  color: CtsPalette.danger,
+                  color: CtsPalette.dangerOnDark,
                   icon: Icons.warning_amber_rounded,
                 ),
                 const SizedBox(height: 12),
@@ -193,8 +199,21 @@ class _HeroBanner extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ],
+          );
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [introduction, const SizedBox(height: 18), focus],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: introduction),
+              const SizedBox(width: 24),
+              focus,
+            ],
+          );
+        },
       ),
     );
   }
@@ -207,13 +226,15 @@ class _MetricsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
+    final cardHeight = 144 + ((textScale - 1) * 320);
     return GridView.builder(
       itemCount: metrics.length,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 260,
-        mainAxisExtent: 144,
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 400,
+        mainAxisExtent: cardHeight,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
       ),
@@ -345,7 +366,7 @@ class _InspectionMiniCard extends StatelessWidget {
             const SizedBox(height: 10),
             LayoutBuilder(
               builder: (context, constraints) {
-                final compact = constraints.maxWidth < 320;
+                final compact = constraints.maxWidth <= 360;
                 final updatedText = Text(
                   DateFormat('MMM d, h:mm a').format(inspection.lastUpdatedAt),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(

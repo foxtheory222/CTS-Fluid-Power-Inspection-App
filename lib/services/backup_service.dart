@@ -27,6 +27,7 @@ class InspectionBackupData {
     required this.customer,
     required this.workOrderNumber,
     this.photoFiles = const <File>[],
+    this.signatureFiles = const <File>[],
     this.generatedPdfFile,
   });
 
@@ -35,6 +36,7 @@ class InspectionBackupData {
   final String customer;
   final String workOrderNumber;
   final List<File> photoFiles;
+  final List<File> signatureFiles;
   final File? generatedPdfFile;
 }
 
@@ -56,6 +58,7 @@ class BackupImportResult {
   const BackupImportResult({
     required this.inspectionJson,
     required this.restoredPhotoFiles,
+    required this.restoredSignatureFiles,
     required this.restoredPdfFile,
     required this.documentNumber,
     required this.documentNumberChanged,
@@ -64,6 +67,7 @@ class BackupImportResult {
 
   final Map<String, dynamic> inspectionJson;
   final List<File> restoredPhotoFiles;
+  final List<File> restoredSignatureFiles;
   final File? restoredPdfFile;
   final String documentNumber;
   final bool documentNumberChanged;
@@ -88,6 +92,11 @@ class BackupService {
   final String _exportFolderName;
   final String _importFolderName;
   final Uuid _uuid = const Uuid();
+
+  static const int _maxArchiveBytes = 512 * 1024 * 1024;
+  static const int _maxEntryCount = 1000;
+  static const int _maxEntryBytes = 64 * 1024 * 1024;
+  static const int _maxExtractedBytes = 1024 * 1024 * 1024;
 
   Future<BackupExportResult> exportInspection({
     required InspectionBackupData data,
@@ -114,6 +123,24 @@ class BackupService {
       archive.addFile(
         ArchiveFile(
           p.posix.join('photos', p.basename(photo.path)),
+          bytes.length,
+          bytes,
+        ),
+      );
+      exportedFileCount++;
+    }
+
+    for (final signature in data.signatureFiles) {
+      if (!await signature.exists()) {
+        warnings.add(
+          'Missing signature file skipped during export: ${signature.path}',
+        );
+        continue;
+      }
+      final bytes = await signature.readAsBytes();
+      archive.addFile(
+        ArchiveFile(
+          p.posix.join('signatures', p.basename(signature.path)),
           bytes.length,
           bytes,
         ),
@@ -174,8 +201,61 @@ class BackupService {
       );
     }
 
+    final archiveLength = await archiveFile.length();
+    if (archiveLength > _maxArchiveBytes) {
+      throw BackupServiceException(
+        'Archive is too large to import safely.',
+        code: BackupServiceErrorCode.archive,
+      );
+    }
     final archiveBytes = await archiveFile.readAsBytes();
-    final decoded = ZipDecoder().decodeBytes(archiveBytes, verify: true);
+    final hasZipSignature =
+        archiveBytes.length >= 4 &&
+        archiveBytes[0] == 0x50 &&
+        archiveBytes[1] == 0x4b &&
+        (archiveBytes[2] == 0x03 ||
+            archiveBytes[2] == 0x05 ||
+            archiveBytes[2] == 0x07) &&
+        (archiveBytes[3] == 0x04 ||
+            archiveBytes[3] == 0x06 ||
+            archiveBytes[3] == 0x08);
+    if (!hasZipSignature) {
+      throw BackupServiceException(
+        'File is not a valid ZIP archive.',
+        code: BackupServiceErrorCode.archive,
+      );
+    }
+    late final Archive decoded;
+    try {
+      decoded = ZipDecoder().decodeBytes(archiveBytes, verify: true);
+    } on ArchiveException catch (error) {
+      throw BackupServiceException(
+        'Archive could not be read: ${error.message}',
+        code: BackupServiceErrorCode.archive,
+      );
+    }
+    if (decoded.length > _maxEntryCount) {
+      throw BackupServiceException(
+        'Archive contains too many files to import safely.',
+        code: BackupServiceErrorCode.archive,
+      );
+    }
+    var declaredExtractedBytes = 0;
+    for (final file in decoded.where((entry) => entry.isFile)) {
+      if (file.size < 0 || file.size > _maxEntryBytes) {
+        throw BackupServiceException(
+          'Archive entry is too large to import safely: ${file.name}',
+          code: BackupServiceErrorCode.archive,
+        );
+      }
+      declaredExtractedBytes += file.size;
+      if (declaredExtractedBytes > _maxExtractedBytes) {
+        throw BackupServiceException(
+          'Archive expands beyond the safe import limit.',
+          code: BackupServiceErrorCode.archive,
+        );
+      }
+    }
     final importRoot = await _buildImportDirectory();
     final restoreFolder = Directory(
       p.join(
@@ -189,27 +269,60 @@ class BackupService {
 
     Map<String, dynamic>? inspectionJson;
     final restoredPhotos = <File>[];
+    final restoredSignatures = <File>[];
     File? restoredPdf;
     final warnings = <String>[];
+    final seenPaths = <String>{};
 
     for (final file in decoded) {
       if (!file.isFile) {
         continue;
       }
 
+      if (file.isSymbolicLink) {
+        warnings.add('Symbolic link was skipped: ${file.name}');
+        continue;
+      }
+
+      final archivePath = p.posix.normalize(file.name);
+      if (p.posix.isAbsolute(archivePath) ||
+          archivePath == '..' ||
+          archivePath.startsWith('../')) {
+        warnings.add('Unsafe archive entry was skipped: ${file.name}');
+        continue;
+      }
+      if (!seenPaths.add(archivePath)) {
+        warnings.add('Duplicate archive entry was skipped: ${file.name}');
+        continue;
+      }
+      final supportedEntry =
+          archivePath == 'inspection.json' ||
+          archivePath == 'manifest.json' ||
+          archivePath.startsWith('photos/') ||
+          archivePath.startsWith('signatures/') ||
+          archivePath.startsWith('generated_pdf/');
+      if (!supportedEntry) {
+        warnings.add('Unsupported archive entry was skipped: ${file.name}');
+        continue;
+      }
+      if (archivePath == 'manifest.json') {
+        continue;
+      }
       final outputPath = p.join(
         restoreFolder.path,
-        file.name.replaceAll('/', Platform.pathSeparator),
+        archivePath.replaceAll('/', Platform.pathSeparator),
       );
       final outputFile = File(outputPath);
       await outputFile.parent.create(recursive: true);
       await outputFile.writeAsBytes(file.content as List<int>, flush: true);
 
-      if (file.name == 'inspection.json') {
+      if (archivePath == 'inspection.json') {
         inspectionJson = _decodeInspectionJson(outputFile);
-      } else if (file.name.startsWith('photos/')) {
+      } else if (archivePath.startsWith('photos/')) {
         restoredPhotos.add(outputFile);
-      } else if (file.name.startsWith('generated_pdf/')) {
+      } else if (archivePath.startsWith('signatures/')) {
+        restoredSignatures.add(outputFile);
+      } else if (archivePath.startsWith('generated_pdf/')) {
         restoredPdf = outputFile;
       }
     }
@@ -246,6 +359,7 @@ class BackupService {
     return BackupImportResult(
       inspectionJson: inspectionJson,
       restoredPhotoFiles: restoredPhotos,
+      restoredSignatureFiles: restoredSignatures,
       restoredPdfFile: restoredPdf,
       documentNumber: documentNumber,
       documentNumberChanged: documentNumberChanged,

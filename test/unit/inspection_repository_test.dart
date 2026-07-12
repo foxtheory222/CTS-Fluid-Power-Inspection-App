@@ -83,6 +83,35 @@ void main() {
     },
   );
 
+  test('a valid save stays in progress until completion is explicit', () async {
+    final inspection = buildInspection(
+      id: 'explicit-completion',
+      documentNumber: '20260420-0090',
+      status: InspectionStatus.inProgress,
+    );
+    fillRequiredResponses(inspection);
+    inspection.signatureFilePath = '/tmp/signature.png';
+
+    final saved = await repository.saveInspection(inspection);
+
+    expect(saved.completedAt, isNull);
+    expect(saved.status, InspectionStatus.inProgress);
+  });
+
+  test('an incomplete inspection cannot be marked as emailed', () async {
+    final inspection = buildInspection(
+      id: 'invalid-email-state',
+      documentNumber: '20260420-0091',
+      status: InspectionStatus.inProgress,
+    );
+
+    await expectLater(
+      repository.markEmailed(inspection),
+      throwsA(isA<StateError>()),
+    );
+    expect(inspection.emailedAt, isNull);
+  });
+
   test('saving an emailed inspection clears emailed state on edit', () async {
     final inspection = buildInspection(
       id: 'save-edit',
@@ -105,6 +134,28 @@ void main() {
 
     expect(edited.emailedAt, isNull);
     expect(edited.status, InspectionStatus.complete);
+    expect(edited.customer, 'Updated Customer');
+  });
+
+  test('saving an edited inspection invalidates generated PDF path', () async {
+    final inspection = buildInspection(
+      id: 'save-edit-pdf',
+      documentNumber: '20260420-0005',
+      status: InspectionStatus.inProgress,
+      generatedPdfPath: '/tmp/stale-report.pdf',
+    );
+    fillRequiredResponses(inspection);
+    inspection.signatureFilePath = '/tmp/signature.png';
+    inspection.completedAt = DateTime.utc(2026, 4, 20, 12, 30);
+
+    final completed = await repository.saveInspection(inspection);
+    expect(completed.status, InspectionStatus.complete);
+    expect(completed.generatedPdfPath, '/tmp/stale-report.pdf');
+
+    completed.customer = 'Updated Customer';
+    final edited = await repository.saveInspection(completed);
+
+    expect(edited.generatedPdfPath, isNull);
     expect(edited.customer, 'Updated Customer');
   });
 
@@ -167,5 +218,18 @@ void main() {
 
     final validation = InspectionValidator.validateForCompletion(inspection);
     expect(validation.isValid, isTrue);
+  });
+
+  test('inspection json round-trips customer signature path', () {
+    final inspection = buildInspection(
+      id: 'customer-signature',
+      documentNumber: '20260420-0004',
+      status: InspectionStatus.inProgress,
+    );
+    inspection.customerSignatureFilePath = '/tmp/customer-signature.png';
+
+    final restored = InspectionRecord.fromJson(inspection.toJson());
+
+    expect(restored.customerSignatureFilePath, '/tmp/customer-signature.png');
   });
 }

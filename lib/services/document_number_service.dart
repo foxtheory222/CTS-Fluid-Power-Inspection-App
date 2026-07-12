@@ -15,9 +15,24 @@ class DocumentNumberService {
         limit: 1,
       );
 
-      final int nextSequence = rows.isEmpty
+      var nextSequence = rows.isEmpty
           ? 1
           : ((rows.first['last_sequence'] as num).toInt() + 1);
+
+      while (true) {
+        final candidate = '$dateKey-${nextSequence.toString().padLeft(4, '0')}';
+        final existing = await txn.query(
+          'inspections',
+          columns: <String>['document_number'],
+          where: 'document_number = ?',
+          whereArgs: <Object?>[candidate],
+          limit: 1,
+        );
+        if (existing.isEmpty) {
+          break;
+        }
+        nextSequence++;
+      }
 
       await txn.insert('document_sequences', <String, Object?>{
         'date_key': dateKey,

@@ -42,6 +42,10 @@ Use a fix-test-fix loop:
 - Required-field and flagged-item prompts.
 - Review screen validation summaries.
 - Signature and completion UI.
+- Primary-route rendering at 412x915 portrait, 800x600, 1280x800, and 1600x1000.
+- Dashboard, editor, list, detail, actions, and settings at 150% text scaling.
+- Android tap-target, accessible-label, and text-contrast guidelines.
+- Recipient validation and share-handoff confirmation.
 
 ### Integration Tests
 - New inspection to completion.
@@ -59,6 +63,20 @@ Use a fix-test-fix loop:
 - Inspection with hose replacement entries.
 - Exported and re-imported inspection.
 - Placeholder logo and sample media asset availability.
+
+## Automated Matrix
+
+| Area | States exercised |
+| --- | --- |
+| Record status | Draft, in progress, complete, emailed |
+| Findings | Clean, monitor/at risk, unsatisfactory, critical/out of service |
+| Evidence | No photo, camera/gallery photo, removed photo, many photos, signature retained/cleared |
+| Persistence | New, edit, duplicate, reload, export, import, document conflict |
+| Handoff | PDF generation, recipient history, share launch, explicit emailed confirmation |
+| Layout | 412x915 portrait, 800x600, 1280x800, 1600x1000, 150% text scaling |
+| Accessibility | Touch targets, labels, contrast, responsive overflow checks |
+
+The host-side matrix runs with `flutter test`. Platform channels such as the camera, Android share sheet, file picker, and SQLite device storage still require the connected-device integration pass.
 
 ## Emulator Acceptance Flow
 1. Launch the app.
@@ -79,6 +97,13 @@ Use a fix-test-fix loop:
 16. Confirm emailed status.
 17. Return to the dashboard and verify counts.
 18. Search, duplicate, export, and import the inspection.
+
+Run both device suites on the connected Android tablet:
+
+```sh
+flutter test integration_test/production_app_smoke_test.dart -d <tablet-device-id>
+flutter test integration_test/app_flow_test.dart -d <tablet-device-id>
+```
 
 ## Regression Fixture Expectations
 - Seeded fixtures should exercise clean, flagged, critical, and export/import states.

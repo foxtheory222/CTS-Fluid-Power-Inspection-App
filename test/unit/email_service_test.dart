@@ -109,6 +109,45 @@ void main() {
       throwsA(isA<EmailServiceException>()),
     );
   });
+
+  test('Email service rejects invalid recipients before sharing', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'email_service_invalid_recipient_',
+    );
+    addTearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final adapter = FakeEmailShareAdapter();
+    final service = EmailService(
+      shareAdapter: adapter,
+      recipientStore: JsonFileRecipientStore(
+        documentsDirectoryProvider: () async => tempDir,
+      ),
+    );
+    final pdfFile = await _writeTempPdf(tempDir);
+
+    await expectLater(
+      service.handoffPdf(
+        request: EmailHandoffRequest(
+          pdfFile: pdfFile,
+          subject: 'Inspection Report',
+          body: 'Attached is the PDF report.',
+          recipients: const <String>['not-an-email'],
+        ),
+      ),
+      throwsA(
+        isA<EmailServiceException>().having(
+          (error) => error.code,
+          'code',
+          EmailServiceErrorCode.invalidEmail,
+        ),
+      ),
+    );
+    expect(adapter.lastSharedPdf, isNull);
+  });
 }
 
 Future<File> _writeTempPdf(Directory directory) async {

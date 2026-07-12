@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:cts_fluid_power_inspection_app/core/constants.dart';
 import 'package:cts_fluid_power_inspection_app/data/models/inspection_enums.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdf/widgets.dart' as pw;
@@ -524,7 +524,21 @@ class SpecInspectionService {
   }
 
   Future<File> generatePdf(SpecInspection inspection) async {
-    final pdf = pw.Document();
+    final regular = pw.Font.ttf(
+      await _loadFontAsset('assets/fonts/PublicSans-Regular.ttf'),
+    );
+    final bold = pw.Font.ttf(
+      await _loadFontAsset('assets/fonts/PublicSans-Bold.ttf'),
+    );
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: regular,
+        bold: bold,
+        italic: regular,
+        boldItalic: bold,
+        fontFallback: <pw.Font>[regular],
+      ),
+    );
     final flaggedCount = inspection.responses
         .where((SpecResponse r) => r.isFlagged)
         .length;
@@ -555,6 +569,15 @@ class SpecInspectionService {
     await file.writeAsBytes(bytes, flush: true);
     inspection.generatedPdfPath = file.path;
     return file;
+  }
+
+  Future<ByteData> _loadFontAsset(String path) async {
+    try {
+      return await rootBundle.load(path);
+    } catch (_) {
+      final bytes = await File(path).readAsBytes();
+      return ByteData.sublistView(Uint8List.fromList(bytes));
+    }
   }
 
   Future<File> exportInspection(SpecInspection inspection) async {

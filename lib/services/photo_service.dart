@@ -285,7 +285,9 @@ class PhotoService {
           sectionKey: sectionKey,
           itemKey: itemKey,
           bytes: await xfile.readAsBytes(),
-          caption: captionPrefix.isEmpty ? '' : '$captionPrefix ${index + 1}',
+          caption: captionPrefix.isEmpty
+              ? ''
+              : '$captionPrefix ${startingSortOrder + index + 1}',
           sortOrder: startingSortOrder + index,
           source: ManagedPhotoSource.gallery,
           originalFileName: p.basename(xfile.path),
@@ -488,7 +490,9 @@ class PhotoService {
   Uint8List _compressToJpeg(Uint8List rawBytes) {
     final img.Image? image = img.decodeImage(rawBytes);
     if (image == null) {
-      return rawBytes;
+      throw PhotoServiceException.invalidAsset(
+        'The selected file is not a supported image.',
+      );
     }
 
     final img.Image resized = image.width > 1600
@@ -506,8 +510,7 @@ class PhotoService {
     final safeSegment = FileUtils.sanitizeFileSegment(
       <String>[inspectionId, sectionKey, itemKey].join('_'),
     );
-    final extension = p.extension(originalFileName);
-    return '${safeSegment}_${DateTime.now().toUtc().millisecondsSinceEpoch}_${_uuid.v4()}${extension.isEmpty ? '.jpg' : extension}';
+    return '${safeSegment}_${DateTime.now().toUtc().millisecondsSinceEpoch}_${_uuid.v4()}.jpg';
   }
 
   int _remainingSlots(int currentPhotoCount) {

@@ -10,8 +10,10 @@ class RequiredFieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
           label,
@@ -19,7 +21,6 @@ class RequiredFieldLabel extends StatelessWidget {
             context,
           ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
@@ -34,7 +35,7 @@ class RequiredFieldLabel extends StatelessWidget {
             ),
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        ?trailing,
       ],
     );
   }

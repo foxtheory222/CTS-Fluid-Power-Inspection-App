@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:cts_fluid_power_inspection_app/services/backup_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -20,6 +22,7 @@ void main() {
     });
 
     final photoFile = await _writePhoto(tempDir, 'photo.jpg');
+    final signatureFile = await _writePhoto(tempDir, 'signature.png');
     final pdfFile = await _writePdf(tempDir, 'report.pdf');
     final service = BackupService(
       documentsDirectoryProvider: () async => tempDir,
@@ -35,6 +38,7 @@ void main() {
         customer: 'CTS',
         workOrderNumber: 'WO-1001',
         photoFiles: <File>[photoFile],
+        signatureFiles: <File>[signatureFile],
         generatedPdfFile: pdfFile,
       ),
     );
@@ -53,6 +57,7 @@ void main() {
       isNot('20260420-0001'),
     );
     expect(importResult.restoredPhotoFiles, isNotEmpty);
+    expect(importResult.restoredSignatureFiles, hasLength(1));
     expect(importResult.restoredPdfFile, isNotNull);
   });
 
@@ -93,6 +98,89 @@ void main() {
 
       expect(importResult.documentNumber, '20260420-0002');
       expect(importResult.documentNumberChanged, isFalse);
+    },
+  );
+
+  test(
+    'Backup service skips archive paths outside the restore folder',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'backup_service_unsafe_path_',
+      );
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+      final inspectionBytes = utf8.encode(
+        jsonEncode(<String, dynamic>{
+          'documentNumber': '20260420-0003',
+          'customer': 'CTS',
+          'workOrderNumber': 'WO-1003',
+        }),
+      );
+      final unsafeBytes = utf8.encode('must not escape');
+      final unsupportedBytes = utf8.encode('must not be restored');
+      final archive = Archive()
+        ..addFile(
+          ArchiveFile(
+            'inspection.json',
+            inspectionBytes.length,
+            inspectionBytes,
+          ),
+        )
+        ..addFile(ArchiveFile('../escape.txt', unsafeBytes.length, unsafeBytes))
+        ..addFile(
+          ArchiveFile(
+            'notes/extra.txt',
+            unsupportedBytes.length,
+            unsupportedBytes,
+          ),
+        );
+      final archiveFile = File(
+        p.join(tempDir.path, 'unsafe.ctsinspection.zip'),
+      );
+      await archiveFile.writeAsBytes(ZipEncoder().encode(archive), flush: true);
+      final service = BackupService(
+        documentsDirectoryProvider: () async => tempDir,
+      );
+
+      final result = await service.importInspection(archiveFile: archiveFile);
+
+      expect(result.documentNumber, '20260420-0003');
+      expect(result.warnings, contains(contains('Unsafe archive entry')));
+      expect(result.warnings, contains(contains('Unsupported archive entry')));
+      expect(await File(p.join(tempDir.path, 'escape.txt')).exists(), isFalse);
+    },
+  );
+
+  test(
+    'Backup service reports malformed ZIP data as an archive error',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'backup_service_malformed_',
+      );
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+      final archiveFile = File(p.join(tempDir.path, 'malformed.zip'));
+      await archiveFile.writeAsBytes(<int>[1, 2, 3, 4], flush: true);
+      final service = BackupService(
+        documentsDirectoryProvider: () async => tempDir,
+      );
+
+      await expectLater(
+        service.importInspection(archiveFile: archiveFile),
+        throwsA(
+          isA<BackupServiceException>().having(
+            (error) => error.code,
+            'code',
+            BackupServiceErrorCode.archive,
+          ),
+        ),
+      );
     },
   );
 }

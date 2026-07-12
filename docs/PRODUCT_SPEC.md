@@ -8,7 +8,7 @@ CTS Fluid Power Inspection App is a production-ready Android tablet app for flui
 - Riverpod for state management.
 - `go_router` for navigation.
 - Local SQLite storage for indexed inspection data.
-- JSON aggregate bundles for export/import and inspection restore.
+- ZIP restore bundles containing a versioned JSON manifest plus local media.
 - Local file storage for photos, signatures, and generated PDFs.
 - Default brand and sample assets live in `assets/logo/` and `assets/demo/`.
 

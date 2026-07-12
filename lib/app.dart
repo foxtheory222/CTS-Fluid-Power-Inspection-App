@@ -70,7 +70,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final summary = state.extra is InspectionSummary
                   ? state.extra as InspectionSummary
                   : null;
-              return InspectionFormScreen(seed: summary);
+              return InspectionFormScreen(
+                seed: summary,
+                inspectionId: state.pathParameters['id'],
+              );
             },
           ),
           GoRoute(

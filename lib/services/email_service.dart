@@ -8,6 +8,10 @@ import 'package:share_plus/share_plus.dart';
 
 import '../core/constants.dart';
 
+bool _isValidEmailAddress(String value) {
+  return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value.trim());
+}
+
 @immutable
 class RecentEmailRecipient {
   const RecentEmailRecipient({
@@ -178,9 +182,9 @@ class JsonFileRecipientStore implements RecipientStore {
   @override
   Future<void> saveRecipient(String email, {String? customer}) async {
     final normalizedEmail = _normalizeEmail(email);
-    if (normalizedEmail.isEmpty) {
+    if (!_isValidEmailAddress(normalizedEmail)) {
       throw EmailServiceException(
-        'Recipient email is required.',
+        'A valid recipient email is required.',
         code: EmailServiceErrorCode.invalidEmail,
       );
     }
@@ -242,9 +246,9 @@ class JsonFileRecipientStore implements RecipientStore {
   }) async {
     final normalizedCustomer = _normalizeCustomer(customer);
     final normalizedEmail = _normalizeEmail(email);
-    if (normalizedCustomer.isEmpty || normalizedEmail.isEmpty) {
+    if (normalizedCustomer.isEmpty || !_isValidEmailAddress(normalizedEmail)) {
       throw EmailServiceException(
-        'Customer and email are required for recipient mapping.',
+        'Customer and a valid email are required for recipient mapping.',
         code: EmailServiceErrorCode.invalidEmail,
       );
     }
@@ -344,9 +348,8 @@ class JsonFileRecipientStore implements RecipientStore {
     final pretty = const JsonEncoder.withIndent('  ').convert(payload);
     final tempFile = File('${file.path}.tmp');
     await tempFile.writeAsString(pretty, flush: true);
-    if (await file.exists()) {
-      await file.delete();
-    }
+    // Android/POSIX rename replaces the old file atomically. Deleting it first
+    // creates a crash window that can erase recipient history.
     await tempFile.rename(file.path);
   }
 
@@ -458,6 +461,13 @@ class EmailService {
       if (mapped != null && mapped.trim().isNotEmpty) {
         recipients.add(mapped.trim());
       }
+    }
+
+    if (recipients.any((recipient) => !_isValidEmailAddress(recipient))) {
+      throw EmailServiceException(
+        'One or more recipient email addresses are invalid.',
+        code: EmailServiceErrorCode.invalidEmail,
+      );
     }
 
     await _shareAdapter.sharePdf(

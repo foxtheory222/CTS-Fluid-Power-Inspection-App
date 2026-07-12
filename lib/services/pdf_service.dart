@@ -23,19 +23,34 @@ class PdfService {
     InspectionReportData data, {
     bool includeLogoAsset = true,
   }) async {
+    final theme = await _loadReportTheme();
     final document = pw.Document(
       title: reportTitle,
       author: 'CTS Fluid Power',
       subject: reportTitle,
-      keywords: 'CTS Fluid Power, inspection, report, hydraulics, fluid power',
+      keywords: <String>[
+        'CTS Fluid Power',
+        'inspection',
+        'report',
+        data.documentNumber,
+        data.workOrderNumber,
+        data.customerReference,
+        data.assetName,
+        data.technicianName,
+        'Private & confidential',
+        if (data.criticalCount > 0) 'Lockout/Tagout',
+      ].join(', '),
       compress: compress,
-      theme: pw.ThemeData.withFont(),
+      theme: theme,
     );
 
     final resolvedLogo = includeLogoAsset
         ? await _resolveLogoImage(data)
         : null;
     final resolvedSignature = await _resolveSignatureImage(data.signature);
+    final resolvedCustomerSignature = await _resolveSignatureImage(
+      data.customerSignature,
+    );
     final photoAssets = await _resolvePhotos(data.allPhotos);
 
     document.addPage(
@@ -51,7 +66,12 @@ class PdfService {
           pw.NewPage(),
           _buildFollowUpPage(data),
           pw.NewPage(),
-          _buildSignaturePage(data, resolvedLogo, resolvedSignature),
+          _buildSignaturePage(
+            data,
+            resolvedLogo,
+            resolvedSignature,
+            resolvedCustomerSignature,
+          ),
           pw.NewPage(),
           ..._buildMediaSummaryPages(photoAssets),
         ],
@@ -61,6 +81,25 @@ class PdfService {
     );
 
     return document.save();
+  }
+
+  Future<pw.ThemeData> _loadReportTheme() async {
+    final regular = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/Inter-Regular.ttf'),
+    );
+    final medium = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/Inter-Medium.ttf'),
+    );
+    final bold = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/PublicSans-Bold.ttf'),
+    );
+    return pw.ThemeData.withFont(
+      base: regular,
+      bold: bold,
+      italic: medium,
+      boldItalic: bold,
+      fontFallback: <pw.Font>[regular],
+    );
   }
 
   Future<File> generateInspectionReportFile(
@@ -359,8 +398,9 @@ class PdfService {
     InspectionReportData data,
     pw.ImageProvider? logo,
     pw.ImageProvider? signature,
+    pw.ImageProvider? customerSignature,
   ) {
-    return _pageSection('Technician Signoff', [
+    return _pageSection('Sign-off', [
       pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
@@ -394,27 +434,21 @@ class PdfService {
           pw.SizedBox(width: 12),
           pw.Expanded(
             flex: 4,
-            child: _infoCard('Signature', [
-              if (signature != null)
-                pw.Container(
-                  height: 100,
-                  padding: const pw.EdgeInsets.all(8),
-                  decoration: _signatureDecoration(),
-                  child: pw.Image(signature, fit: pw.BoxFit.contain),
-                )
-              else
-                _emptyState('No signature was captured.'),
-              pw.SizedBox(height: 8),
-              _kv('Signer', data.signature?.signerName ?? data.technicianName),
-              _kv(
-                'Signed at',
-                data.signature == null
-                    ? 'Not captured'
-                    : _formatDateTime(data.signature!.signedAt),
-              ),
-            ]),
+            child: _signatureCard(
+              title: 'Technician Signature',
+              signature: data.signature,
+              image: signature,
+              fallbackSigner: data.technicianName,
+            ),
           ),
         ],
+      ),
+      pw.SizedBox(height: 12),
+      _signatureCard(
+        title: 'Customer Signature',
+        signature: data.customerSignature,
+        image: customerSignature,
+        fallbackSigner: data.customer,
       ),
       pw.SizedBox(height: 12),
       if (logo != null)
@@ -441,6 +475,33 @@ class PdfService {
             ],
           ),
         ),
+    ]);
+  }
+
+  pw.Widget _signatureCard({
+    required String title,
+    required InspectionReportSignature? signature,
+    required pw.ImageProvider? image,
+    required String fallbackSigner,
+  }) {
+    return _infoCard(title, [
+      if (image != null)
+        pw.Container(
+          height: 100,
+          padding: const pw.EdgeInsets.all(8),
+          decoration: _signatureDecoration(),
+          child: pw.Image(image, fit: pw.BoxFit.contain),
+        )
+      else
+        _emptyState('No signature was captured.'),
+      pw.SizedBox(height: 8),
+      _kv('Signer', signature?.signerName ?? fallbackSigner),
+      _kv(
+        'Signed at',
+        signature == null
+            ? 'Not captured'
+            : _formatDateTime(signature.signedAt),
+      ),
     ]);
   }
 
