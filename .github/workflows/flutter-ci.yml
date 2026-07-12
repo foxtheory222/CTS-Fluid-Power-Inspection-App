@@ -107,7 +107,7 @@ jobs:
         run: flutter pub get
 
       - name: Build release APK
-        run: flutter build apk --release --no-pub
+        run: flutter build apk --release
 
       - name: Run Android release lint
         run: ./android/gradlew -p android lintRelease --no-daemon
