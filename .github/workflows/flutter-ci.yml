@@ -49,6 +49,14 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage --no-pub
 
+      - name: Reclaim runner disk space for the emulator
+        run: |
+          # This Android-only job does not use the preinstalled .NET SDK.
+          # Removing it keeps API 35 userdata creation below the hosted
+          # runner's disk limit without touching the Android toolchain.
+          sudo rm -rf /usr/share/dotnet
+          df -h /
+
       - name: Enable KVM access
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
@@ -66,7 +74,7 @@ jobs:
           disable-animations: true
           emulator-options: >-
             -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -memory 2048
-            -no-boot-anim -camera-back none
+            -no-boot-anim -camera-back none -partition-size 2048
           script: |
             bash tool/run_android_integration.sh integration_test/production_app_smoke_test.dart
             bash tool/run_android_integration.sh integration_test/app_flow_test.dart
