@@ -14,7 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-and-build:
+  verify:
+    name: Format, analyze, test, and device matrix
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -69,10 +70,41 @@ jobs:
             bash tool/run_android_integration.sh integration_test/production_app_smoke_test.dart
             bash tool/run_android_integration.sh integration_test/app_flow_test.dart
 
-      - name: Reset build products before production APK
-        run: |
-          flutter clean
-          flutter pub get
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluid-power-coverage-${{ github.run_number }}
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 14
+
+  build-apks:
+    name: Build and lint installable APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: verify
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
 
       - name: Build release APK
         run: flutter build apk --release --no-pub
@@ -83,7 +115,7 @@ jobs:
       - name: Build debug APK
         run: flutter build apk --debug --no-pub
 
-      - name: Upload APKs, coverage, and lint reports
+      - name: Upload APKs and lint reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -93,7 +125,6 @@ jobs:
           path: |
             build/app/outputs/flutter-apk/app-debug.apk
             build/app/outputs/flutter-apk/app-release.apk
-            coverage/lcov.info
             build/app/reports/lint-results-release.html
             build/app/reports/lint-results-release.txt
             build/app/reports/lint-results-release.xml
