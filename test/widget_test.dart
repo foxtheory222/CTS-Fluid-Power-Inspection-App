@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cts_fluid_power_inspection_app/app.dart';
+import 'package:cts_fluid_power_inspection_app/core/constants.dart';
 import 'package:cts_fluid_power_inspection_app/core/workspace_controller.dart';
 import 'package:cts_fluid_power_inspection_app/core/workspace_models.dart';
 import 'package:cts_fluid_power_inspection_app/core/workspace_providers.dart';
@@ -481,6 +482,19 @@ void main() {
           modelPartNumber: 'MOTOR-OLD',
         ),
       ],
+      photos: <InspectionPhoto>[
+        InspectionPhoto(
+          id: 'legacy-pump-photo',
+          inspectionId: 'component-record',
+          sectionKey: InspectionSectionKeys.componentTracking,
+          itemKey: 'component:pump',
+          filePath: '/tmp/legacy-pump-photo.jpg',
+          caption: 'Legacy pump photo',
+          sortOrder: 0,
+          capturedAt: now,
+          createdAt: now,
+        ),
+      ],
     );
     final controller = _FakeHydrationController(record);
     await tester.binding.setSurfaceSize(const Size(2400, 1800));
@@ -514,6 +528,53 @@ void main() {
       controller.savedDraft?.componentPartNumbers['Main Motor'],
       'MOTOR-NEW',
     );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('component-card-main-pump')),
+        matching: find.text('Legacy pump photo'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('all component cards expose labelled photo actions', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(2400, 1800));
+    addTearDown(() async => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          workspaceProvider.overrideWith(
+            (ref) => AppWorkspaceController(seedDemoData: false),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: InspectionFormScreen())),
+      ),
+    );
+    await tester.pump();
+
+    for (final component in <(String, String)>[
+      ('Main Pump', 'main-pump'),
+      ('Main Motor', 'main-motor'),
+      ('Cooler', 'cooler'),
+      ('Accumulator', 'accumulator'),
+    ]) {
+      final addPhoto = find.byKey(
+        ValueKey<String>('component-${component.$2}-add-photo-button'),
+      );
+      expect(addPhoto, findsOneWidget);
+      await tester.ensureVisible(addPhoto);
+      await tester.tap(addPhoto);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add ${component.$1} photo'), findsOneWidget);
+      expect(find.byKey(const Key('photo-source-camera')), findsOneWidget);
+      expect(find.byKey(const Key('photo-source-gallery')), findsOneWidget);
+
+      Navigator.of(tester.element(find.text('Use camera'))).pop();
+      await tester.pumpAndSettle();
+    }
   });
 
   testWidgets('photo action asks for a camera or device photo', (tester) async {
