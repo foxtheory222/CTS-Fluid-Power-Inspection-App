@@ -47,6 +47,7 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
   late final TextEditingController _hoseName;
   late final TextEditingController _hoseParts;
   late final Map<String, TextEditingController> _componentPartNumbers;
+  final Map<String, String> _componentLegacyPhotoKeys = <String, String>{};
   late final TextEditingController _breatherPartNumber;
   late final TextEditingController _pressureFilterPartNumber;
   late final TextEditingController _returnFilterPartNumber;
@@ -228,6 +229,16 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
               .firstOrNull ??
           '';
     }
+    _componentLegacyPhotoKeys
+      ..clear()
+      ..addEntries(
+        record.componentEntries.map(
+          (component) => MapEntry<String, String>(
+            component.componentType,
+            'component:${component.id}',
+          ),
+        ),
+      );
     _criticalAcknowledged = record.criticalAcknowledged;
     _signed = (record.signatureFilePath ?? '').trim().isNotEmpty;
     _customerSigned = (record.customerSignatureFilePath ?? '')
@@ -1372,43 +1383,65 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
 
   Widget _componentCard(String title, IconData icon) {
     final controller = _componentPartNumbers[title]!;
+    final itemKey = InspectionItemKeys.componentPhoto(title);
+    final componentSlug = itemKey
+        .replaceFirst('component_', '')
+        .replaceAll('_', '-');
     return Card(
+      key: ValueKey<String>('component-card-$componentSlug'),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: CtsPalette.orange.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: CtsPalette.orange),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: CtsPalette.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: CtsPalette.orange),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    key: ValueKey<String>(
-                      'component-${title.toLowerCase().replaceAll(' ', '-')}',
-                    ),
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Model / part number',
-                    ),
-                  ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: ValueKey<String>(
+                'component-${title.toLowerCase().replaceAll(' ', '-')}',
               ),
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Model / part number',
+              ),
+            ),
+            const SizedBox(height: 14),
+            PhotoGrid(
+              photos: _photosForComponent(title),
+              emptyLabel: 'No $title photos added yet.',
+              addButtonKey: ValueKey<String>(
+                'component-$componentSlug-add-photo-button',
+              ),
+              addButtonSemanticLabel: 'Add photo for $title',
+              onAddPhoto: _isSaving
+                  ? null
+                  : () => _addDraftPhoto(
+                      sectionKey: InspectionSectionKeys.componentTracking,
+                      itemKey: itemKey,
+                      itemLabel: title,
+                    ),
+              onRemovePhoto: _isSaving ? null : _removeDraftPhoto,
             ),
           ],
         ),
@@ -1674,6 +1707,24 @@ class _InspectionFormScreenState extends ConsumerState<InspectionFormScreen> {
         .where(
           (photo) =>
               photo.sectionTitle == sectionTitle && photo.itemLabel == itemKey,
+        )
+        .toList(growable: false);
+  }
+
+  List<InspectionPhotoView> _photosForComponent(String componentType) {
+    final itemKeys = <String>{
+      InspectionItemKeys.componentPhoto(componentType),
+      componentType,
+      ?_componentLegacyPhotoKeys[componentType],
+    };
+    final sectionTitle = InspectionSectionKeys.titleFor(
+      InspectionSectionKeys.componentTracking,
+    );
+    return _photos
+        .where(
+          (photo) =>
+              photo.sectionTitle == sectionTitle &&
+              itemKeys.contains(photo.itemLabel),
         )
         .toList(growable: false);
   }

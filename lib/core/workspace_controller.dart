@@ -1177,7 +1177,12 @@ class AppWorkspaceController extends ChangeNotifier {
                       response.value ?? response.conditionRating?.label ?? '',
                   conditionRating: _reportRating(response.conditionRating),
                   comment: response.comment,
-                  photos: _reportPhotosForItem(record, response.itemKey),
+                  photos: _reportPhotosForItem(
+                    record,
+                    sectionKey: response.sectionKey,
+                    itemKey: response.itemKey,
+                    itemLabel: response.itemLabel,
+                  ),
                 );
               })
               .toList(growable: true);
@@ -1190,6 +1195,16 @@ class AppWorkspaceController extends ChangeNotifier {
                   value: entry.modelPartNumber ?? '',
                   conditionRating: _reportRating(entry.conditionRating),
                   comment: entry.notes,
+                  photos: _reportPhotosForItems(
+                    record,
+                    sectionKey: InspectionSectionKeys.componentTracking,
+                    itemKeys: <String>{
+                      InspectionItemKeys.componentPhoto(entry.componentType),
+                      'component:${entry.id}',
+                      entry.componentType,
+                    },
+                    itemLabel: entry.componentType,
+                  ),
                 ),
               ),
             );
@@ -1286,17 +1301,41 @@ class AppWorkspaceController extends ChangeNotifier {
   }
 
   List<InspectionReportPhoto> _reportPhotosForItem(
-    InspectionRecord record,
-    String itemKey,
-  ) {
-    return record
-        .photosForItem(itemKey)
+    InspectionRecord record, {
+    required String sectionKey,
+    required String itemKey,
+    required String itemLabel,
+  }) {
+    return _reportPhotosForItems(
+      record,
+      sectionKey: sectionKey,
+      itemKeys: <String>{itemKey},
+      itemLabel: itemLabel,
+    );
+  }
+
+  List<InspectionReportPhoto> _reportPhotosForItems(
+    InspectionRecord record, {
+    required String sectionKey,
+    required Set<String> itemKeys,
+    required String itemLabel,
+  }) {
+    final photos =
+        record.photos
+            .where(
+              (photo) =>
+                  photo.sectionKey == sectionKey &&
+                  itemKeys.contains(photo.itemKey),
+            )
+            .toList(growable: false)
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return photos
         .map(
           (photo) => InspectionReportPhoto(
             filePath: photo.filePath,
             caption: photo.caption ?? 'Inspection photo',
             sectionTitle: InspectionSectionKeys.titleFor(photo.sectionKey),
-            itemLabel: photo.itemKey,
+            itemLabel: itemLabel,
             capturedAt: photo.capturedAt,
             sortOrder: photo.sortOrder,
           ),

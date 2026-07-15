@@ -134,6 +134,15 @@ class InspectionItemKeys {
   static const String finalTechComments = 'final_tech_comments';
   static const String technicianSignature = 'technician_signature';
   static const String criticalAcknowledgement = 'critical_acknowledgement';
+
+  static String componentPhoto(String componentType) {
+    final slug = componentType
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    return 'component_$slug';
+  }
 }
 
 class FixedOptions {

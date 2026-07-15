@@ -12,6 +12,7 @@ class PhotoGrid extends StatelessWidget {
     this.emptyLabel = 'No photos added yet.',
     this.onAddPhoto,
     this.addButtonKey,
+    this.addButtonSemanticLabel,
     this.onRemovePhoto,
   });
 
@@ -19,6 +20,7 @@ class PhotoGrid extends StatelessWidget {
   final String emptyLabel;
   final VoidCallback? onAddPhoto;
   final Key? addButtonKey;
+  final String? addButtonSemanticLabel;
   final ValueChanged<InspectionPhotoView>? onRemovePhoto;
 
   @override
@@ -29,6 +31,7 @@ class PhotoGrid extends StatelessWidget {
         label: emptyLabel,
         onAddPhoto: onAddPhoto,
         addButtonKey: addButtonKey,
+        addButtonSemanticLabel: addButtonSemanticLabel,
       );
     }
     return LayoutBuilder(
@@ -53,6 +56,7 @@ class PhotoGrid extends StatelessWidget {
               return _AddPhotoCard(
                 onAddPhoto: onAddPhoto!,
                 addButtonKey: addButtonKey,
+                addButtonSemanticLabel: addButtonSemanticLabel,
               );
             }
             final photo = items[index];
@@ -69,42 +73,51 @@ class PhotoGrid extends StatelessWidget {
 }
 
 class _AddPhotoCard extends StatelessWidget {
-  const _AddPhotoCard({required this.onAddPhoto, this.addButtonKey});
+  const _AddPhotoCard({
+    required this.onAddPhoto,
+    this.addButtonKey,
+    this.addButtonSemanticLabel,
+  });
 
   final VoidCallback onAddPhoto;
   final Key? addButtonKey;
+  final String? addButtonSemanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        key: addButtonKey,
-        borderRadius: BorderRadius.circular(20),
-        onTap: onAddPhoto,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: CtsPalette.orange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
+    return Semantics(
+      label: addButtonSemanticLabel,
+      button: true,
+      child: Card(
+        child: InkWell(
+          key: addButtonKey,
+          borderRadius: BorderRadius.circular(20),
+          onTap: onAddPhoto,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: CtsPalette.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.add_a_photo_outlined,
+                    color: CtsPalette.orange,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.add_a_photo_outlined,
-                  color: CtsPalette.orange,
+                const SizedBox(height: 10),
+                Text(
+                  'Add photo',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Add photo',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -258,11 +271,13 @@ class _EmptyPhotoState extends StatelessWidget {
     required this.label,
     this.onAddPhoto,
     this.addButtonKey,
+    this.addButtonSemanticLabel,
   });
 
   final String label;
   final VoidCallback? onAddPhoto;
   final Key? addButtonKey;
+  final String? addButtonSemanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -299,11 +314,15 @@ class _EmptyPhotoState extends StatelessWidget {
           ),
           if (onAddPhoto != null) ...[
             const SizedBox(width: 14),
-            OutlinedButton.icon(
-              key: addButtonKey,
-              onPressed: onAddPhoto,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Add photo'),
+            Semantics(
+              label: addButtonSemanticLabel,
+              button: true,
+              child: OutlinedButton.icon(
+                key: addButtonKey,
+                onPressed: onAddPhoto,
+                icon: const Icon(Icons.add_a_photo_outlined),
+                label: const Text('Add photo'),
+              ),
             ),
           ],
         ],

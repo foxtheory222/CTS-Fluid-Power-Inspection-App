@@ -6,8 +6,10 @@ import 'package:cts_fluid_power_inspection_app/core/workspace_models.dart';
 import 'package:cts_fluid_power_inspection_app/data/models/inspection_enums.dart';
 import 'package:cts_fluid_power_inspection_app/data/models/inspection_models.dart';
 import 'package:cts_fluid_power_inspection_app/data/repositories/inspection_repository.dart';
+import 'package:cts_fluid_power_inspection_app/features/pdf_report/pdf_report_models.dart';
 import 'package:cts_fluid_power_inspection_app/services/document_number_service.dart';
 import 'package:cts_fluid_power_inspection_app/services/email_service.dart';
+import 'package:cts_fluid_power_inspection_app/services/pdf_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -679,12 +681,84 @@ void main() {
       expect(await File(importedRecord!.signatureFilePath!).exists(), isTrue);
       expect(importedRecord.customer, 'Production Customer');
     });
+
+    test(
+      'component photos persist through reports and portable archives',
+      () async {
+        final sourcePhoto = File('${tempDir.path}/main-pump.jpg');
+        await sourcePhoto.writeAsBytes(<int>[1, 2, 3, 4], flush: true);
+        final pdfService = _CapturingPdfService();
+        final controller = AppWorkspaceController(
+          repository: repository,
+          pdfService: pdfService,
+          seedDemoData: false,
+        );
+        final itemKey = InspectionItemKeys.componentPhoto('Main Pump');
+        final saved = await controller.saveFormDraft(
+          _completeDraft(
+            componentPartNumbers: const <String, String>{
+              'Main Pump': 'PUMP-100',
+            },
+            photos: <InspectionPhotoView>[
+              InspectionPhotoView(
+                assetPath: sourcePhoto.path,
+                caption: 'Main Pump nameplate',
+                sectionTitle: InspectionSectionKeys.titleFor(
+                  InspectionSectionKeys.componentTracking,
+                ),
+                itemLabel: itemKey,
+                capturedAt: DateTime.utc(2026, 4, 20, 12),
+              ),
+            ],
+          ),
+          complete: true,
+        );
+
+        final reloaded = (await repository.getInspection(saved.id))!;
+        expect(
+          reloaded.photos,
+          contains(
+            isA<InspectionPhoto>()
+                .having(
+                  (photo) => photo.sectionKey,
+                  'section key',
+                  InspectionSectionKeys.componentTracking,
+                )
+                .having((photo) => photo.itemKey, 'item key', itemKey),
+          ),
+        );
+
+        await controller.generatePdf(saved.id);
+        final report = pdfService.capturedData!;
+        final componentSection = report.sections.singleWhere(
+          (section) => section.key == InspectionSectionKeys.componentTracking,
+        );
+        final pumpItem = componentSection.items.singleWhere(
+          (item) => item.label == 'Main Pump',
+        );
+        expect(pumpItem.photos, hasLength(1));
+        expect(pumpItem.photos.single.itemLabel, 'Main Pump');
+        expect(report.allPhotos, contains(pumpItem.photos.single));
+
+        final export = await controller.exportInspection(saved.id);
+        final imported = await controller.importInspectionArchive(
+          export.archiveFile,
+        );
+        final importedRecord = (await repository.getInspection(imported.id))!;
+        final importedPhoto = importedRecord.photos.singleWhere(
+          (photo) => photo.itemKey == itemKey,
+        );
+        expect(await File(importedPhoto.filePath).exists(), isTrue);
+      },
+    );
   });
 }
 
 InspectionFormDraft _completeDraft({
   String? inspectionId,
   String customer = 'Production Customer',
+  Map<String, String> componentPartNumbers = const <String, String>{},
+  List<InspectionPhotoView> photos = const <InspectionPhotoView>[],
 }) {
   return InspectionFormDraft(
     inspectionId: inspectionId,
@@ -696,6 +770,7 @@ InspectionFormDraft _completeDraft({
     technicianName: 'CTS Tech',
     servicingShop: 'CTS Edmonton',
     finalTechComments: 'Ready for completion.',
+    componentPartNumbers: componentPartNumbers,
     fluidLevel: FluidLevelOption.withinTolerance,
     fluidClarity: FluidClarityOption.clear,
     tankIntegrity: ConditionRating.satisfactory,
@@ -717,6 +792,24 @@ InspectionFormDraft _completeDraft({
     accumulatorPreCharge: '900',
     chargeAccumulator: YesNoNa.no,
     additionalPartsRepairs: YesNoNa.no,
+    photos: photos,
     technicianSignaturePngBytes: Uint8List.fromList(<int>[0, 1, 2, 3]),
   );
+}
+
+class _CapturingPdfService extends PdfService {
+  InspectionReportData? capturedData;
+
+  @override
+  Future<File> generateInspectionReportFile(
+    InspectionReportData data, {
+    required Directory outputDirectory,
+    bool includeLogoAsset = true,
+  }) async {
+    capturedData = data;
+    final output = File('${outputDirectory.path}/captured-report.pdf');
+    await output.create(recursive: true);
+    await output.writeAsBytes(<int>[1, 2, 3], flush: true);
+    return output;
+  }
 }

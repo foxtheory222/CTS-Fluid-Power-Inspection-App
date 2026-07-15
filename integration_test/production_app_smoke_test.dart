@@ -41,6 +41,18 @@ void main() {
     await tester.pumpUntilFound(find.textContaining('Progress saved as'));
     expect(find.textContaining('Progress saved as'), findsOneWidget);
 
+    for (final component in <String>['main-pump', 'main-motor']) {
+      final componentAddPhoto = find.byKey(
+        Key('component-$component-add-photo-button'),
+      );
+      await tester.ensureVisible(componentAddPhoto);
+      await tester.tap(componentAddPhoto);
+      await tester.pumpUntilFound(find.text('Use camera'));
+      expect(find.text('Choose from device'), findsOneWidget);
+      Navigator.of(tester.element(find.text('Use camera'))).pop();
+      await tester.pumpAndSettle();
+    }
+
     final fluidAddPhoto = find.byKey(const Key('fluid-add-photo-button'));
     await tester.ensureVisible(fluidAddPhoto);
     await tester.tap(fluidAddPhoto);
